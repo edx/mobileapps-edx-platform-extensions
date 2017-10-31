@@ -12,8 +12,9 @@ from edx_solutions_api_integration.permissions import (
     SecureRetrieveUpdateAPIView,
     SecureListAPIView,
 )
-from edx_solutions_api_integration.utils import StringCipher
 from edx_solutions_api_integration.users.serializers import SimpleUserSerializer
+from edx_solutions_organizations.models import Organization
+from edx_solutions_organizations.serializers import BasicOrganizationSerializer
 
 
 class MobileAppView(SecureListCreateAPIView):
@@ -230,3 +231,68 @@ class MobileAppUserView(SecureListAPIView):
             return Response({}, status=status.HTTP_204_NO_CONTENT)
         except ObjectDoesNotExist:
             raise Http404
+
+
+class MobileAppOrganizationView(SecureListAPIView):
+    """
+    **Use Case**
+
+        Get organizations of mobile app.
+
+    **Example Requests**
+
+        GET /api/server/mobileapps/{id}/organizations
+        POST /api/server/mobileapps/{id}/organizations
+        DELETE /api/server/mobileapps/{id}/organizations
+    """
+    serializer_class = BasicOrganizationSerializer
+
+    def get_queryset(self):
+        """
+        Restricts the returned organizations to a given mobile app,
+        by filtering against a 'mobileapp_id' in kwargs.
+        """
+        return Organization.objects.filter(mobile_apps__exact=self.kwargs['mobileapp_id'])
+
+    def post(self, request, mobileapp_id):
+        """
+        **POST Parameters**
+
+            The body of the POST request must include the following parameters.
+
+            * organizations: list of organization ids to add into the mobile app
+
+        **Response Values**
+
+            If the request is successful, the request returns an HTTP 201 "CREATED" response.
+        """
+        try:
+            mobileapp = MobileApp.objects.get(id=mobileapp_id)
+            for organization in Organization.objects.filter(id__in=request.data['organizations']):
+                mobileapp.organizations.add(organization)
+
+            return Response({}, status=status.HTTP_201_CREATED)
+        except ObjectDoesNotExist:
+            raise Http404
+
+    def delete(self, request, mobileapp_id):
+        """
+        **DELETE Parameters**
+
+            The body of the DELETE request must include the following parameters.
+
+            * organizations: list of organization ids to remove from the mobile app
+
+        **Response Values**
+
+            If the request is successful, the request returns an HTTP 204 "NO CONTENT" response.
+        """
+        try:
+            mobileapp = MobileApp.objects.get(id=mobileapp_id)
+            for organization in Organization.objects.filter(id__in=request.data['organizations']):
+                mobileapp.organizations.remove(organization)
+
+            return Response({}, status=status.HTTP_204_NO_CONTENT)
+        except ObjectDoesNotExist:
+            raise Http404
+
