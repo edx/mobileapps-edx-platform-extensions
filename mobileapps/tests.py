@@ -37,8 +37,7 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.test_mobileapp_operating_system = 1
         self.test_mobileapp_current_version = str(uuid.uuid4())
 
-        self.user = UserFactory.build(username='test', email='test@edx.org', password='test_password')
-        self.user.save()
+        self.user = UserFactory.create(username='test', email='test@edx.org', password='test_password')
         self.client = Client()
         self.client.login(username=self.user.username, password='test_password')
 
@@ -288,8 +287,7 @@ class MobileappsUserApiTests(ModuleStoreTestCase, APIClientMixin):
 
         self.mobileapp = self._setup_test_mobileapp()
 
-        self.user = UserFactory.build(username='test', email='test@edx.org', password='test_password')
-        self.user.save()
+        self.user = UserFactory.create(username='test', email='test@edx.org', password='test_password')
         self.client = Client()
         self.client.login(username=self.user.username, password='test_password')
 
@@ -383,3 +381,133 @@ class MobileappsUserApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['count'], 2)
         self.assertEqual(len(response.data['results']), 2)
         self.assertEqual(response.data['num_pages'], 1)
+
+
+@ddt.ddt
+class MobileappsOrganizationApiTests(ModuleStoreTestCase, APIClientMixin):
+    """ Test suite for Mobileapps Organization API views """
+
+    MODULESTORE = TEST_DATA_SPLIT_MODULESTORE
+
+    def setUp(self):
+        super(MobileappsOrganizationApiTests, self).setUp()
+
+        self.test_mobileapp_name = str(uuid.uuid4())
+        self.test_mobileapp_identifier = str(uuid.uuid4())
+        self.test_mobileapp_operating_system = 1
+        self.test_mobileapp_current_version = str(uuid.uuid4())
+        self.organizations = [
+            Organization.objects.create(name='ABC Organization'),
+            Organization.objects.create(name='XYZ Organization'),
+        ]
+
+        self.mobileapp = self._setup_test_mobileapp()
+
+        self.user = UserFactory.create(username='test', email='test@edx.org', password='test_password')
+        self.client = Client()
+        self.client.login(username=self.user.username, password='test_password')
+
+        cache.clear()
+
+    def _setup_test_mobileapp(self, mobileapp_data=None, organizations=None):
+        """
+        Creates a new mobileapp with given mobileapp_data
+        if mobileapp_data is not present it would create mobile app with test values
+        :param
+            mobileapp_data: Dictionary which each item represents mobile app attribute
+            organizations: List of organizations to add in mobile app
+        :return: newly created mobile app
+        """
+        mobileapp_data = mobileapp_data if mobileapp_data else {}
+        organizations = organizations if organizations else self.organizations
+
+        mobileapp = MobileApp.objects.create(
+            name=mobileapp_data.get('name', self.test_mobileapp_name),
+            identifier=mobileapp_data.get('identifier', self.test_mobileapp_identifier),
+            operating_system=mobileapp_data.get('operating_system', self.test_mobileapp_operating_system),
+            current_version=mobileapp_data.get('current_version', self.test_mobileapp_current_version),
+            updated_by=self.user,
+        )
+
+        for organization in organizations:
+            mobileapp.organizations.add(organization)
+        return mobileapp
+
+    def test_mobileapps_organizations(self):
+        organization1 = Organization.objects.create(name='EFG Organization')
+        organization2 = Organization.objects.create(name='LMN Organization')
+
+        mobileapp1 = self._setup_test_mobileapp(
+            mobileapp_data={"name": "ABC App", "identifier": "ABC"},
+            organizations=[organization1]
+        )
+        mobileapp2 = self._setup_test_mobileapp(
+            mobileapp_data={"name": "XYZ App", "identifier": "XYZ"},
+            organizations=[organization1, organization2]
+        )
+
+        response = self.do_get(reverse('mobileapps-organizations', kwargs={'mobileapp_id': mobileapp1.id}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['num_pages'], 1)
+        self.assertEqual(response.data['results'][0]['name'], organization1.name)
+
+        response = self.do_get(reverse('mobileapps-organizations', kwargs={'mobileapp_id': mobileapp2.id}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 2)
+        self.assertEqual(len(response.data['results']), 2)
+        self.assertEqual(response.data['num_pages'], 1)
+        self.assertEqual(response.data['results'][0]['name'], organization1.name)
+        self.assertEqual(response.data['results'][1]['name'], organization2.name)
+
+    def test_mobileapps_organizations_add(self):
+        response = self.do_get(reverse('mobileapps-organizations', kwargs={'mobileapp_id': self.mobileapp.id}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], len(self.organizations))
+        self.assertEqual(len(response.data['results']), len(self.organizations))
+        self.assertEqual(response.data['num_pages'], 1)
+
+        organization1 = Organization.objects.create(name='EFG Organization')
+        organization2 = Organization.objects.create(name='LMN Organization')
+
+        data = {
+            "organizations": [organization1.id, organization2.id]
+        }
+
+        response = self.do_post(reverse('mobileapps-organizations',
+                                        kwargs={'mobileapp_id': self.mobileapp.id}), data=data)
+        self.assertEqual(response.status_code, 201)
+
+        response = self.do_get(reverse('mobileapps-organizations', kwargs={'mobileapp_id': self.mobileapp.id}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 4)
+        self.assertEqual(len(response.data['results']), 4)
+        self.assertEqual(response.data['num_pages'], 1)
+        self.assertEqual(response.data['results'][0]['name'], self.organizations[0].name)
+        self.assertEqual(response.data['results'][1]['name'], self.organizations[1].name)
+        self.assertEqual(response.data['results'][2]['name'], organization1.name)
+        self.assertEqual(response.data['results'][3]['name'], organization2.name)
+
+    def test_mobileapps_organizations_remove(self):
+        response = self.do_get(reverse('mobileapps-organizations', kwargs={'mobileapp_id': self.mobileapp.id}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], len(self.organizations))
+        self.assertEqual(len(response.data['results']), len(self.organizations))
+        self.assertEqual(response.data['num_pages'], 1)
+
+        data = {
+            "organizations": [self.organizations[0].id]
+        }
+
+        response = self.do_delete(reverse('mobileapps-organizations',
+                                          kwargs={'mobileapp_id': self.mobileapp.id}), data=data)
+        self.assertEqual(response.status_code, 204)
+
+        response = self.do_get(reverse('mobileapps-organizations', kwargs={'mobileapp_id': self.mobileapp.id}))
+        self.assertEqual(response.status_code, 200)
+
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['num_pages'], 1)
+        self.assertEqual(response.data['results'][0]['name'], self.organizations[1].name)
