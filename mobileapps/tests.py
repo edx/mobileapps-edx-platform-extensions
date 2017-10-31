@@ -190,7 +190,6 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertIsNotNone(response.data['modified'])
 
     def test_mobileapps_detail_put(self):
-
         mobileapp = MobileApp.objects.create(
             name='ABC App',
             identifier='ABC',
@@ -214,7 +213,6 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['is_active'], mobileapp.is_active)
 
     def test_mobileapps_detail_patch(self):
-
         mobileapp = MobileApp.objects.create(
             name='ABC App',
             identifier='ABC',
@@ -235,7 +233,6 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['is_active'], mobileapp.is_active)
 
     def test_mobileapps_detail_delete(self):
-
         mobileapp = MobileApp.objects.create(
             name='ABC App',
             identifier='ABC',
@@ -248,7 +245,6 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.status_code, 405)
 
     def test_mobileapps_inactive(self):
-
         mobileapp = MobileApp.objects.create(
             name='ABC App',
             identifier='ABC',
@@ -273,3 +269,117 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['count'], 1)
         self.assertEqual(response.data['results'][0]['is_active'], False)
+
+
+@ddt.ddt
+class MobileappsUserApiTests(ModuleStoreTestCase, APIClientMixin):
+    """ Test suite for Mobileapps User API views """
+
+    MODULESTORE = TEST_DATA_SPLIT_MODULESTORE
+
+    def setUp(self):
+        super(MobileappsUserApiTests, self).setUp()
+
+        self.test_mobileapp_name = str(uuid.uuid4())
+        self.test_mobileapp_identifier = str(uuid.uuid4())
+        self.test_mobileapp_operating_system = 1
+        self.test_mobileapp_current_version = str(uuid.uuid4())
+        self.users = UserFactory.create_batch(5)
+
+        self.mobileapp = self._setup_test_mobileapp()
+
+        self.user = UserFactory.build(username='test', email='test@edx.org', password='test_password')
+        self.user.save()
+        self.client = Client()
+        self.client.login(username=self.user.username, password='test_password')
+
+        cache.clear()
+
+    def _setup_test_mobileapp(self, mobileapp_data=None, users=None):
+        """
+        Creates a new mobileapp with given mobileapp_data
+        if mobileapp_data is not present it would create mobile app with test values
+        :param
+            mobileapp_data: Dictionary which each item represents mobile app attribute
+            users: List of users to add in mobile app
+        :return: newly created mobile app
+        """
+        mobileapp_data = mobileapp_data if mobileapp_data else {}
+        users = users if users else self.users
+
+        mobileapp = MobileApp.objects.create(
+            name=mobileapp_data.get('name', self.test_mobileapp_name),
+            identifier=mobileapp_data.get('identifier', self.test_mobileapp_identifier),
+            operating_system=mobileapp_data.get('operating_system', self.test_mobileapp_operating_system),
+            current_version=mobileapp_data.get('current_version', self.test_mobileapp_current_version),
+            updated_by=self.user,
+        )
+
+        for user in users:
+            mobileapp.users.add(user)
+        return mobileapp
+
+    def test_mobileapps_users(self):
+        users = UserFactory.create_batch(5)
+
+        mobileapp1 = self._setup_test_mobileapp(
+            mobileapp_data={"name": "ABC App", "identifier": "ABC"},
+            users=users[:2]
+        )
+        mobileapp2 = self._setup_test_mobileapp(
+            mobileapp_data={"name": "XYZ App", "identifier": "XYZ"},
+            users=users[2:]
+        )
+
+        response = self.do_get(reverse('mobileapps-users', kwargs={'mobileapp_id': mobileapp1.id}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 2)
+        self.assertEqual(len(response.data['results']), 2)
+        self.assertEqual(response.data['num_pages'], 1)
+
+        response = self.do_get(reverse('mobileapps-users', kwargs={'mobileapp_id': mobileapp2.id}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 3)
+        self.assertEqual(len(response.data['results']), 3)
+        self.assertEqual(response.data['num_pages'], 1)
+
+    def test_mobileapps_users_add(self):
+        response = self.do_get(reverse('mobileapps-users', kwargs={'mobileapp_id': self.mobileapp.id}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], len(self.users))
+        self.assertEqual(len(response.data['results']), len(self.users))
+        self.assertEqual(response.data['num_pages'], 1)
+
+        data = {
+            "users": [user.id for user in UserFactory.create_batch(3)]
+        }
+
+        response = self.do_post(reverse('mobileapps-users', kwargs={'mobileapp_id': self.mobileapp.id}), data=data)
+        self.assertEqual(response.status_code, 201)
+
+        response = self.do_get(reverse('mobileapps-users', kwargs={'mobileapp_id': self.mobileapp.id}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 8)
+        self.assertEqual(len(response.data['results']), 8)
+        self.assertEqual(response.data['num_pages'], 1)
+
+    def test_mobileapps_users_remove(self):
+        response = self.do_get(reverse('mobileapps-users', kwargs={'mobileapp_id': self.mobileapp.id}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], len(self.users))
+        self.assertEqual(len(response.data['results']), len(self.users))
+        self.assertEqual(response.data['num_pages'], 1)
+
+        data = {
+            "users": [user.id for user in self.users[2:]]
+        }
+
+        response = self.do_delete(reverse('mobileapps-users', kwargs={'mobileapp_id': self.mobileapp.id}), data=data)
+        self.assertEqual(response.status_code, 204)
+
+        response = self.do_get(reverse('mobileapps-users', kwargs={'mobileapp_id': self.mobileapp.id}))
+        self.assertEqual(response.status_code, 200)
+
+        self.assertEqual(response.data['count'], 2)
+        self.assertEqual(len(response.data['results']), 2)
+        self.assertEqual(response.data['num_pages'], 1)

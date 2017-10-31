@@ -1,7 +1,19 @@
+from django.contrib.auth.models import User
+from django.core.exceptions import ObjectDoesNotExist
+from django.http import Http404
+
+from rest_framework.response import Response
+from rest_framework import status
+
 from mobileapps.models import MobileApp
 from mobileapps.serializers import MobileAppSerializer
-from edx_solutions_api_integration.permissions import SecureListCreateAPIView, SecureRetrieveUpdateAPIView
+from edx_solutions_api_integration.permissions import (
+    SecureListCreateAPIView,
+    SecureRetrieveUpdateAPIView,
+    SecureListAPIView,
+)
 from edx_solutions_api_integration.utils import StringCipher
+from edx_solutions_api_integration.users.serializers import SimpleUserSerializer
 
 
 class MobileAppView(SecureListCreateAPIView):
@@ -155,3 +167,66 @@ class MobileAppDetailView(SecureRetrieveUpdateAPIView):
     queryset = MobileApp.objects.all()
     serializer_class = MobileAppSerializer
 
+
+class MobileAppUserView(SecureListAPIView):
+    """
+    **Use Case**
+
+        Get users of mobile app.
+
+    **Example Requests**
+
+        GET /api/server/mobileapps/{id}/users
+        POST /api/server/mobileapps/{id}/users
+        DELETE /api/server/mobileapps/{id}/users
+    """
+    serializer_class = SimpleUserSerializer
+
+    def get_queryset(self):
+        """
+        Restricts the returned users to a given mobile app,
+        by filtering against a 'mobileapp_id' in kwargs.
+        """
+        return User.objects.filter(mobile_apps__exact=self.kwargs['mobileapp_id'])
+
+    def post(self, request, mobileapp_id):
+        """
+        **POST Parameters**
+
+            The body of the POST request must include the following parameters.
+
+            * users: list of user ids to add into the mobile app
+
+        **Response Values**
+
+            If the request is successful, the request returns an HTTP 201 "CREATED" response.
+        """
+        try:
+            mobileapp = MobileApp.objects.get(id=mobileapp_id)
+            for user in User.objects.filter(id__in=request.data['users']):
+                mobileapp.users.add(user)
+
+            return Response({}, status=status.HTTP_201_CREATED)
+        except ObjectDoesNotExist:
+            raise Http404
+
+    def delete(self, request, mobileapp_id):
+        """
+        **DELETE Parameters**
+
+            The body of the DELETE request must include the following parameters.
+
+            * users: list of user ids to remove from the mobile app
+
+        **Response Values**
+
+            If the request is successful, the request returns an HTTP 204 "NO CONTENT" response.
+        """
+        try:
+            mobileapp = MobileApp.objects.get(id=mobileapp_id)
+            for user in User.objects.filter(id__in=request.data['users']):
+                mobileapp.users.remove(user)
+
+            return Response({}, status=status.HTTP_204_NO_CONTENT)
+        except ObjectDoesNotExist:
+            raise Http404
