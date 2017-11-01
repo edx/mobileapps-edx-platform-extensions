@@ -2,23 +2,25 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import Http404
 from django.utils.translation import ugettext_lazy as _
+from rest_framework import status
+from rest_framework.response import Response
+
 from edx_notifications.data import NotificationMessage
 from edx_notifications.lib.publisher import get_notification_type
 from edx_solutions_api_integration.permissions import (
     SecureListCreateAPIView,
     SecureRetrieveUpdateAPIView,
     SecureListAPIView,
+    SecureAPIView,
 )
 from edx_solutions_api_integration.users.serializers import SimpleUserSerializer
 from edx_solutions_organizations.models import Organization
 from edx_solutions_organizations.serializers import BasicOrganizationSerializer
-from rest_framework import status
-from rest_framework.response import Response
+
 
 from mobileapps.models import MobileApp
 from mobileapps.serializers import MobileAppSerializer
 from mobileapps.tasks import publish_mobile_apps_notifications_task
-from mobileapps.utils import get_api_keys, get_provider_name
 
 
 class MobileAppView(SecureListCreateAPIView):
@@ -301,12 +303,12 @@ class MobileAppOrganizationView(SecureListAPIView):
             raise Http404
 
 
-class MobileAppAllUsersNotifications(SecureListCreateAPIView):
+class MobileAppAllUsersNotifications(SecureAPIView):
     """
     **Use Cases**
 
         send a push notification to all the users of the specific app
-        using urban airship push notification backend.
+        using app's push notifications provider.
 
     **Example Requests**
 
@@ -314,7 +316,6 @@ class MobileAppAllUsersNotifications(SecureListCreateAPIView):
 
         The body of the POST request must include the following parameters.
 
-        * title: notification title
         * message: notification message
 
     **Response Values**
@@ -331,9 +332,6 @@ class MobileAppAllUsersNotifications(SecureListCreateAPIView):
         message = request.data.get('message', None)
         if not message:
             return Response({'message': _('message is missing')}, status.HTTP_400_BAD_REQUEST)
-        title = request.data.get('title', None)
-        if not title:
-            return Response({'message': _('title is missing')}, status.HTTP_400_BAD_REQUEST)
 
         try:
             mobile_app = MobileApp.objects.get(pk=pk)
@@ -343,19 +341,11 @@ class MobileAppAllUsersNotifications(SecureListCreateAPIView):
             return Response({'message': _('Mobile app does not exist')}, status.HTTP_404_NOT_FOUND)
 
         try:
-            api_keys = get_api_keys(mobile_app)
-            notification_provider = get_provider_name(mobile_app)
+            api_keys = mobile_app.get_api_keys()
+            notification_provider = mobile_app.get_notifications_provider()
             if not notification_provider:
                 return Response({'message': _('Notification Provider not found')}, status.HTTP_404_NOT_FOUND)
-            notification_type = get_notification_type(u'open-edx.mobileapps.notifications')
-            notification_message = NotificationMessage(
-                namespace=mobile_app.identifier,
-                msg_type=notification_type,
-                payload={'title': title,
-                         'message': message,
-                         'send_to_all': True
-                         }
-            )
+            notification_message = _create_notification_message(message, mobile_app.identifier, send_to_all=True)
 
             # Send the notification_msg to the Celery task
             publish_mobile_apps_notifications_task.delay([], notification_message, api_keys, notification_provider)
@@ -366,12 +356,12 @@ class MobileAppAllUsersNotifications(SecureListCreateAPIView):
         return Response({'message': _('Accepted')}, status.HTTP_202_ACCEPTED)
 
 
-class MobileAppSelectedUsersNotifications(SecureListCreateAPIView):
+class MobileAppSelectedUsersNotifications(SecureAPIView):
     """
     **Use Cases**
 
         send a push notification to a list of given users of an app
-        using urban airship push notification backend.
+        using app's push notifications provider.
 
     **Example Requests**
 
@@ -379,7 +369,6 @@ class MobileAppSelectedUsersNotifications(SecureListCreateAPIView):
 
         The body of the POST request must include the following parameters.
 
-        * title: notification title
         * message: notification message
         * users: comma separated list of user ids
 
@@ -397,9 +386,7 @@ class MobileAppSelectedUsersNotifications(SecureListCreateAPIView):
         message = request.data.get('message', None)
         if not message:
             return Response({'message': _('message is missing')}, status.HTTP_400_BAD_REQUEST)
-        title = request.data.get('title', None)
-        if not title:
-            return Response({'message': _('title is missing')}, status.HTTP_400_BAD_REQUEST)
+
         user_ids = request.data.get('users', None)
         if not user_ids:
             return Response({'message': _('Users list is empty')}, status.HTTP_400_BAD_REQUEST)
@@ -412,18 +399,12 @@ class MobileAppSelectedUsersNotifications(SecureListCreateAPIView):
             return Response({'message': _('Mobile app does not exist')}, status.HTTP_404_NOT_FOUND)
 
         try:
-            api_keys = get_api_keys(mobile_app)
-            notification_provider = get_provider_name(mobile_app)
+            api_keys = mobile_app.get_api_keys()
+            notification_provider = mobile_app.get_notifications_provider()
             if not notification_provider:
                 return Response({'message': _('Notification Provider not found')}, status.HTTP_404_NOT_FOUND)
-            notification_type = get_notification_type(u'open-edx.mobileapps.notifications')
-            notification_message = NotificationMessage(
-                namespace=mobile_app.identifier,
-                msg_type=notification_type,
-                payload={'title': title,
-                         'message': message
-                         }
-            )
+            notification_message = _create_notification_message(message, mobile_app.identifier)
+
             # Send the notification_msg to the Celery task
             publish_mobile_apps_notifications_task.delay(user_ids, notification_message, api_keys,
                                                          notification_provider)
@@ -434,12 +415,12 @@ class MobileAppSelectedUsersNotifications(SecureListCreateAPIView):
         return Response({'message': _('Accepted')}, status.HTTP_202_ACCEPTED)
 
 
-class MobileAppOrganizationAllUsersNotifications(SecureListCreateAPIView):
+class MobileAppOrganizationAllUsersNotifications(SecureAPIView):
     """
     **Use Cases**
 
         send a push notification to all the users registered with the specific
-        organization of the app using urban airship push notification backend.
+        organization of the app using app's push notifications provider.
 
     **Example Requests**
 
@@ -447,7 +428,6 @@ class MobileAppOrganizationAllUsersNotifications(SecureListCreateAPIView):
 
         The body of the POST request must include the following parameters.
 
-        * title: notification title
         * message: notification message
 
     **Response Values**
@@ -464,9 +444,6 @@ class MobileAppOrganizationAllUsersNotifications(SecureListCreateAPIView):
         message = request.data.get('message', None)
         if not message:
             return Response({'message': _('message is missing')}, status.HTTP_400_BAD_REQUEST)
-        title = request.data.get('title', None)
-        if not title:
-            return Response({'message': _('title is missing')}, status.HTTP_400_BAD_REQUEST)
 
         try:
             mobile_app = MobileApp.objects.get(pk=pk)
@@ -482,18 +459,11 @@ class MobileAppOrganizationAllUsersNotifications(SecureListCreateAPIView):
                             status.HTTP_400_BAD_REQUEST)
         try:
             user_ids = organization.users.values_list('id', flat=True).all()
-            api_keys = get_api_keys(mobile_app)
-            notification_provider = get_provider_name(mobile_app)
+            api_keys = mobile_app.get_api_keys()
+            notification_provider = mobile_app.get_notifications_provider()
             if not notification_provider:
                 return Response({'message': _('Notification Provider not found')}, status.HTTP_404_NOT_FOUND)
-            notification_type = get_notification_type(u'open-edx.mobileapps.notifications')
-            notification_message = NotificationMessage(
-                namespace=mobile_app.identifier,
-                msg_type=notification_type,
-                payload={'title': title,
-                         'message': message
-                         }
-            )
+            notification_message = _create_notification_message(message, mobile_app.identifier)
 
             # Send the notification_msg to the Celery task
             publish_mobile_apps_notifications_task.delay(user_ids, notification_message, api_keys,
@@ -503,3 +473,16 @@ class MobileAppOrganizationAllUsersNotifications(SecureListCreateAPIView):
             return Response({'message':  _('Server error')}, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({'message': _('Accepted')}, status.HTTP_202_ACCEPTED)
+
+
+def _create_notification_message(title, app_identifier, send_to_all=False):
+    notification_type = get_notification_type(u'open-edx.mobileapps.notifications')
+    notification_message = NotificationMessage(
+        namespace=app_identifier,
+        msg_type=notification_type,
+        payload={
+            'title': title,
+            'send_to_all': send_to_all
+        }
+    )
+    return notification_message

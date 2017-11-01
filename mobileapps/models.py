@@ -5,13 +5,10 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-
-
-from edx_solutions_organizations.models import Organization
-from model_utils.models import TimeStampedModel
-from model_utils.fields import AutoCreatedField
 from edx_solutions_api_integration.utils import StringCipher
-
+from edx_solutions_organizations.models import Organization
+from model_utils.fields import AutoCreatedField
+from model_utils.models import TimeStampedModel
 
 OS_CHOICES = (
     (1, 'Android'),
@@ -66,6 +63,22 @@ class MobileApp(TimeStampedModel):
     def provider_secret_decrypted(self):
         if self.provider_secret:
             return StringCipher.decrypt(self.provider_secret.encode())
+
+    def get_api_keys(self):
+        return {
+            'provider_key': self.provider_key_decrypted,
+            'provider_secret': self.provider_secret_decrypted,
+        }
+
+    def get_notifications_provider(self):
+        """
+        this function returns notification provider name against a given mobile app
+        if provider is not available it will return None
+        """
+        notification_provider = self.notification_provider
+        if notification_provider:
+            return notification_provider.name
+        return None
 
 
 class MobileAppHistory(models.Model):
