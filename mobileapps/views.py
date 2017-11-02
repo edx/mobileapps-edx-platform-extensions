@@ -23,6 +23,34 @@ from mobileapps.serializers import MobileAppSerializer
 from mobileapps.tasks import publish_mobile_apps_notifications_task
 
 
+class NotificationProviderView(SecureListAPIView):
+    """
+    **Use Case**
+
+        Get list of all notification providers..
+
+    **Example Requests**
+
+        GET /api/server/mobileapps/notification_providers
+
+    **Response Values**
+
+        **GET**
+
+        If the request is successful, the request returns an HTTP 200 "OK" response.
+
+        The HTTP 200 response has a paginated list of objects with the following values.
+
+        * id: ID of the notification provider.
+        * name: Name of provider.
+        * api_url: API url of the notification dashboard
+        * created: Datetime it was created in.
+        * modified: Datetime it was modified in.
+    """
+    serializer_class = NotificationProviderSerializer
+    queryset = NotificationProvider.objects.all()
+
+
 class MobileAppView(SecureListCreateAPIView):
     """
     **Use Case**
