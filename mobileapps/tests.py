@@ -329,20 +329,20 @@ class MobileappsUserApiTests(ModuleStoreTestCase, APIClientMixin):
             users=users[2:]
         )
 
-        response = self.do_get(reverse('mobileapps-users', kwargs={'mobileapp_id': mobileapp1.id}))
+        response = self.do_get(reverse('mobileapps-users', kwargs={'mobile_app_id': mobileapp1.id}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['count'], 2)
         self.assertEqual(len(response.data['results']), 2)
         self.assertEqual(response.data['num_pages'], 1)
 
-        response = self.do_get(reverse('mobileapps-users', kwargs={'mobileapp_id': mobileapp2.id}))
+        response = self.do_get(reverse('mobileapps-users', kwargs={'mobile_app_id': mobileapp2.id}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['count'], 3)
         self.assertEqual(len(response.data['results']), 3)
         self.assertEqual(response.data['num_pages'], 1)
 
     def test_mobileapps_users_add(self):
-        response = self.do_get(reverse('mobileapps-users', kwargs={'mobileapp_id': self.mobileapp.id}))
+        response = self.do_get(reverse('mobileapps-users', kwargs={'mobile_app_id': self.mobileapp.id}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['count'], len(self.users))
         self.assertEqual(len(response.data['results']), len(self.users))
@@ -352,17 +352,17 @@ class MobileappsUserApiTests(ModuleStoreTestCase, APIClientMixin):
             "users": [user.id for user in UserFactory.create_batch(3)]
         }
 
-        response = self.do_post(reverse('mobileapps-users', kwargs={'mobileapp_id': self.mobileapp.id}), data=data)
+        response = self.do_post(reverse('mobileapps-users', kwargs={'mobile_app_id': self.mobileapp.id}), data=data)
         self.assertEqual(response.status_code, 201)
 
-        response = self.do_get(reverse('mobileapps-users', kwargs={'mobileapp_id': self.mobileapp.id}))
+        response = self.do_get(reverse('mobileapps-users', kwargs={'mobile_app_id': self.mobileapp.id}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['count'], 8)
         self.assertEqual(len(response.data['results']), 8)
         self.assertEqual(response.data['num_pages'], 1)
 
     def test_mobileapps_users_remove(self):
-        response = self.do_get(reverse('mobileapps-users', kwargs={'mobileapp_id': self.mobileapp.id}))
+        response = self.do_get(reverse('mobileapps-users', kwargs={'mobile_app_id': self.mobileapp.id}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['count'], len(self.users))
         self.assertEqual(len(response.data['results']), len(self.users))
@@ -372,10 +372,10 @@ class MobileappsUserApiTests(ModuleStoreTestCase, APIClientMixin):
             "users": [user.id for user in self.users[2:]]
         }
 
-        response = self.do_delete(reverse('mobileapps-users', kwargs={'mobileapp_id': self.mobileapp.id}), data=data)
+        response = self.do_delete(reverse('mobileapps-users', kwargs={'mobile_app_id': self.mobileapp.id}), data=data)
         self.assertEqual(response.status_code, 204)
 
-        response = self.do_get(reverse('mobileapps-users', kwargs={'mobileapp_id': self.mobileapp.id}))
+        response = self.do_get(reverse('mobileapps-users', kwargs={'mobile_app_id': self.mobileapp.id}))
         self.assertEqual(response.status_code, 200)
 
         self.assertEqual(response.data['count'], 2)
@@ -446,14 +446,14 @@ class MobileappsOrganizationApiTests(ModuleStoreTestCase, APIClientMixin):
             organizations=[organization1, organization2]
         )
 
-        response = self.do_get(reverse('mobileapps-organizations', kwargs={'mobileapp_id': mobileapp1.id}))
+        response = self.do_get(reverse('mobileapps-organizations', kwargs={'mobile_app_id': mobileapp1.id}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['count'], 1)
         self.assertEqual(len(response.data['results']), 1)
         self.assertEqual(response.data['num_pages'], 1)
         self.assertEqual(response.data['results'][0]['name'], organization1.name)
 
-        response = self.do_get(reverse('mobileapps-organizations', kwargs={'mobileapp_id': mobileapp2.id}))
+        response = self.do_get(reverse('mobileapps-organizations', kwargs={'mobile_app_id': mobileapp2.id}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['count'], 2)
         self.assertEqual(len(response.data['results']), 2)
@@ -462,7 +462,7 @@ class MobileappsOrganizationApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['results'][1]['name'], organization2.name)
 
     def test_mobileapps_organizations_add(self):
-        response = self.do_get(reverse('mobileapps-organizations', kwargs={'mobileapp_id': self.mobileapp.id}))
+        response = self.do_get(reverse('mobileapps-organizations', kwargs={'mobile_app_id': self.mobileapp.id}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['count'], len(self.organizations))
         self.assertEqual(len(response.data['results']), len(self.organizations))
@@ -476,10 +476,10 @@ class MobileappsOrganizationApiTests(ModuleStoreTestCase, APIClientMixin):
         }
 
         response = self.do_post(reverse('mobileapps-organizations',
-                                        kwargs={'mobileapp_id': self.mobileapp.id}), data=data)
+                                        kwargs={'mobile_app_id': self.mobileapp.id}), data=data)
         self.assertEqual(response.status_code, 201)
 
-        response = self.do_get(reverse('mobileapps-organizations', kwargs={'mobileapp_id': self.mobileapp.id}))
+        response = self.do_get(reverse('mobileapps-organizations', kwargs={'mobile_app_id': self.mobileapp.id}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['count'], 4)
         self.assertEqual(len(response.data['results']), 4)
@@ -490,7 +490,7 @@ class MobileappsOrganizationApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['results'][3]['name'], organization2.name)
 
     def test_mobileapps_organizations_remove(self):
-        response = self.do_get(reverse('mobileapps-organizations', kwargs={'mobileapp_id': self.mobileapp.id}))
+        response = self.do_get(reverse('mobileapps-organizations', kwargs={'mobile_app_id': self.mobileapp.id}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['count'], len(self.organizations))
         self.assertEqual(len(response.data['results']), len(self.organizations))
@@ -501,10 +501,10 @@ class MobileappsOrganizationApiTests(ModuleStoreTestCase, APIClientMixin):
         }
 
         response = self.do_delete(reverse('mobileapps-organizations',
-                                          kwargs={'mobileapp_id': self.mobileapp.id}), data=data)
+                                          kwargs={'mobile_app_id': self.mobileapp.id}), data=data)
         self.assertEqual(response.status_code, 204)
 
-        response = self.do_get(reverse('mobileapps-organizations', kwargs={'mobileapp_id': self.mobileapp.id}))
+        response = self.do_get(reverse('mobileapps-organizations', kwargs={'mobile_app_id': self.mobileapp.id}))
         self.assertEqual(response.status_code, 200)
 
         self.assertEqual(response.data['count'], 1)

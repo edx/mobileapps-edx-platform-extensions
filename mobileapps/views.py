@@ -1,20 +1,26 @@
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import Http404
-
-from rest_framework.response import Response
+from django.utils.translation import ugettext_lazy as _
 from rest_framework import status
+from rest_framework.response import Response
 
-from mobileapps.models import MobileApp
-from mobileapps.serializers import MobileAppSerializer
+from edx_notifications.data import NotificationMessage
+from edx_notifications.lib.publisher import get_notification_type
 from edx_solutions_api_integration.permissions import (
     SecureListCreateAPIView,
     SecureRetrieveUpdateAPIView,
     SecureListAPIView,
+    SecureAPIView,
 )
 from edx_solutions_api_integration.users.serializers import SimpleUserSerializer
 from edx_solutions_organizations.models import Organization
 from edx_solutions_organizations.serializers import BasicOrganizationSerializer
+
+
+from mobileapps.models import MobileApp
+from mobileapps.serializers import MobileAppSerializer
+from mobileapps.tasks import publish_mobile_apps_notifications_task
 
 
 class MobileAppView(SecureListCreateAPIView):
@@ -186,11 +192,11 @@ class MobileAppUserView(SecureListAPIView):
     def get_queryset(self):
         """
         Restricts the returned users to a given mobile app,
-        by filtering against a 'mobileapp_id' in kwargs.
+        by filtering against a 'mobile_app_id' in kwargs.
         """
-        return User.objects.filter(mobile_apps__exact=self.kwargs['mobileapp_id'])
+        return User.objects.filter(mobile_apps__exact=self.kwargs['mobile_app_id'])
 
-    def post(self, request, mobileapp_id):
+    def post(self, request, mobile_app_id):
         """
         **POST Parameters**
 
@@ -203,7 +209,7 @@ class MobileAppUserView(SecureListAPIView):
             If the request is successful, the request returns an HTTP 201 "CREATED" response.
         """
         try:
-            mobileapp = MobileApp.objects.get(id=mobileapp_id)
+            mobileapp = MobileApp.objects.get(id=mobile_app_id)
             for user in User.objects.filter(id__in=request.data['users']):
                 mobileapp.users.add(user)
 
@@ -211,7 +217,7 @@ class MobileAppUserView(SecureListAPIView):
         except ObjectDoesNotExist:
             raise Http404
 
-    def delete(self, request, mobileapp_id):
+    def delete(self, request, mobile_app_id):
         """
         **DELETE Parameters**
 
@@ -224,7 +230,7 @@ class MobileAppUserView(SecureListAPIView):
             If the request is successful, the request returns an HTTP 204 "NO CONTENT" response.
         """
         try:
-            mobileapp = MobileApp.objects.get(id=mobileapp_id)
+            mobileapp = MobileApp.objects.get(id=mobile_app_id)
             for user in User.objects.filter(id__in=request.data['users']):
                 mobileapp.users.remove(user)
 
@@ -250,11 +256,11 @@ class MobileAppOrganizationView(SecureListAPIView):
     def get_queryset(self):
         """
         Restricts the returned organizations to a given mobile app,
-        by filtering against a 'mobileapp_id' in kwargs.
+        by filtering against a 'mobile_app_id' in kwargs.
         """
-        return Organization.objects.filter(mobile_apps__exact=self.kwargs['mobileapp_id'])
+        return Organization.objects.filter(mobile_apps__exact=self.kwargs['mobile_app_id'])
 
-    def post(self, request, mobileapp_id):
+    def post(self, request, mobile_app_id):
         """
         **POST Parameters**
 
@@ -267,7 +273,7 @@ class MobileAppOrganizationView(SecureListAPIView):
             If the request is successful, the request returns an HTTP 201 "CREATED" response.
         """
         try:
-            mobileapp = MobileApp.objects.get(id=mobileapp_id)
+            mobileapp = MobileApp.objects.get(id=mobile_app_id)
             for organization in Organization.objects.filter(id__in=request.data['organizations']):
                 mobileapp.organizations.add(organization)
 
@@ -275,7 +281,7 @@ class MobileAppOrganizationView(SecureListAPIView):
         except ObjectDoesNotExist:
             raise Http404
 
-    def delete(self, request, mobileapp_id):
+    def delete(self, request, mobile_app_id):
         """
         **DELETE Parameters**
 
@@ -288,7 +294,7 @@ class MobileAppOrganizationView(SecureListAPIView):
             If the request is successful, the request returns an HTTP 204 "NO CONTENT" response.
         """
         try:
-            mobileapp = MobileApp.objects.get(id=mobileapp_id)
+            mobileapp = MobileApp.objects.get(id=mobile_app_id)
             for organization in Organization.objects.filter(id__in=request.data['organizations']):
                 mobileapp.organizations.remove(organization)
 
@@ -296,3 +302,194 @@ class MobileAppOrganizationView(SecureListAPIView):
         except ObjectDoesNotExist:
             raise Http404
 
+
+class MobileAppAllUsersNotifications(SecureAPIView):
+    """
+    **Use Cases**
+
+        send a push notification to all the users of the specific app
+        using app's push notifications provider.
+
+    **Example Requests**
+
+        POST /api/mobileapps/{id}/notification
+
+        The body of the POST request must include the following parameters.
+
+        * message: notification message
+
+    **Response Values**
+
+        If the request is successful, the request returns an HTTP 202 "Accepted" response.
+
+        The HTTP 202 response has the following value.
+
+        * message: Accepted
+    """
+
+    def post(self, request, mobile_app_id):
+
+        message = request.data.get('message', None)
+        if not message:
+            return Response({'message': _('message is missing')}, status.HTTP_400_BAD_REQUEST)
+
+        try:
+            mobile_app = MobileApp.objects.get(pk=mobile_app_id)
+            if not mobile_app.is_active:
+                return Response({'message': _('Mobile app is inactive')}, status.HTTP_403_FORBIDDEN)
+
+            notification_provider = mobile_app.get_notification_provider_name()
+            if not notification_provider:
+                return Response({'message': _('Notification Provider not found')}, status.HTTP_404_NOT_FOUND)
+        except ObjectDoesNotExist:
+            return Response({'message': _('Mobile app does not exist')}, status.HTTP_404_NOT_FOUND)
+
+        try:
+            api_keys = mobile_app.get_api_keys()
+            payload = {
+                'title': message,
+                'send_to_all': True
+            }
+            notification_message = _create_notification_message(mobile_app.identifier, payload)
+
+            # Send the notification_msg to the Celery task
+            publish_mobile_apps_notifications_task.delay([], notification_message, api_keys, notification_provider)
+
+        except Exception, ex:  # pylint: disable=broad-except
+            return Response({'message':  _('Server error')}, status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({'message': _('Accepted')}, status.HTTP_202_ACCEPTED)
+
+
+class MobileAppSelectedUsersNotifications(SecureAPIView):
+    """
+    **Use Cases**
+
+        send a push notification to a list of given users of an app
+        using app's push notifications provider.
+
+    **Example Requests**
+
+        POST /api/mobileapps/{id}/users/notification
+
+        The body of the POST request must include the following parameters.
+
+        * message: notification message
+        * users: comma separated list of user ids
+
+    **Response Values**
+
+        If the request is successful, the request returns an HTTP 202 "Accepted" response.
+
+        The HTTP 202 response has the following value.
+
+        * message: Accepted
+    """
+
+    def post(self, request, mobile_app_id):
+
+        message = request.data.get('message', None)
+        if not message:
+            return Response({'message': _('message is missing')}, status.HTTP_400_BAD_REQUEST)
+
+        user_ids = request.data.get('users', None)
+        if not user_ids:
+            return Response({'message': _('Users list is empty')}, status.HTTP_400_BAD_REQUEST)
+
+        try:
+            mobile_app = MobileApp.objects.get(pk=mobile_app_id)
+            if not mobile_app.is_active:
+                return Response({'message': _('Mobile app is inactive')}, status.HTTP_403_FORBIDDEN)
+
+            notification_provider = mobile_app.get_notification_provider_name()
+            if not notification_provider:
+                return Response({'message': _('Notification Provider not found')}, status.HTTP_404_NOT_FOUND)
+        except ObjectDoesNotExist:
+            return Response({'message': _('Mobile app does not exist')}, status.HTTP_404_NOT_FOUND)
+
+        try:
+            api_keys = mobile_app.get_api_keys()
+            payload = {'title': message}
+            notification_message = _create_notification_message(mobile_app.identifier, payload)
+
+            # Send the notification_msg to the Celery task
+            publish_mobile_apps_notifications_task.delay(user_ids, notification_message, api_keys,
+                                                         notification_provider)
+
+        except Exception, ex:
+            return Response({'message':  _('Server error')}, status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({'message': _('Accepted')}, status.HTTP_202_ACCEPTED)
+
+
+class MobileAppOrganizationAllUsersNotifications(SecureAPIView):
+    """
+    **Use Cases**
+
+        send a push notification to all the users registered with the specific
+        organization of the app using app's push notifications provider.
+
+    **Example Requests**
+
+        POST /api/mobileapps/{id}/organization/{id}/notification
+
+        The body of the POST request must include the following parameters.
+
+        * message: notification message
+
+    **Response Values**
+
+        If the request is successful, the request returns an HTTP 202 "Accepted" response.
+
+        The HTTP 202 response has the following value.
+
+        * message: Accepted
+    """
+
+    def post(self, request, mobile_app_id, organization_id):
+
+        message = request.data.get('message', None)
+        if not message:
+            return Response({'message': _('message is missing')}, status.HTTP_400_BAD_REQUEST)
+
+        try:
+            mobile_app = MobileApp.objects.get(pk=mobile_app_id)
+            if not mobile_app.is_active:
+                return Response({'message': _('Mobile app is inactive')}, status.HTTP_403_FORBIDDEN)
+
+            notification_provider = mobile_app.get_notification_provider_name()
+            if not notification_provider:
+                return Response({'message': _('Notification Provider not found')}, status.HTTP_404_NOT_FOUND)
+        except ObjectDoesNotExist:
+            return Response({'message': _('Mobile app does not exist')}, status.HTTP_404_NOT_FOUND)
+
+        try:
+            organization = mobile_app.organizations.get(id=organization_id)
+            user_ids = organization.users.values_list('id', flat=True).all()
+        except ObjectDoesNotExist:
+            return Response({'message': _('Organization is not associated with mobile app')},
+                            status.HTTP_400_BAD_REQUEST)
+
+        try:
+            api_keys = mobile_app.get_api_keys()
+            payload = {'title': message}
+            notification_message = _create_notification_message(mobile_app.identifier, payload)
+
+            # Send the notification_msg to the Celery task
+            publish_mobile_apps_notifications_task.delay(user_ids, notification_message, api_keys,
+                                                         notification_provider)
+
+        except Exception, ex:  # pylint: disable=broad-except
+            return Response({'message':  _('Server error')}, status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({'message': _('Accepted')}, status.HTTP_202_ACCEPTED)
+
+
+def _create_notification_message(app_identifier, payload):
+    notification_type = get_notification_type(u'open-edx.mobileapps.notifications')
+    notification_message = NotificationMessage(
+        namespace=app_identifier,
+        msg_type=notification_type,
+        payload=payload
+    )
+    return notification_message
