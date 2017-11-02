@@ -1,6 +1,11 @@
 from rest_framework import serializers
-from mobileapps.models import MobileApp
+from mobileapps.models import MobileApp, NotificationProvider
 from edx_solutions_api_integration.utils import StringCipher
+
+
+class NotificationProviderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NotificationProvider
 
 
 class MobileAppSerializer(serializers.ModelSerializer):

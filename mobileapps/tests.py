@@ -7,9 +7,9 @@ paver test_system -s lms -t mobileapps
 import uuid
 import ddt
 from django.core.urlresolvers import reverse
-from django.test.client import RequestFactory, Client
+from django.test.client import Client
 
-from mobileapps.models import MobileApp
+from mobileapps.models import MobileApp, NotificationProvider
 from student.tests.factories import CourseEnrollmentFactory, UserFactory, GroupFactory
 from edx_solutions_organizations.models import Organization
 from django.core.cache import cache
@@ -20,6 +20,68 @@ from xmodule.modulestore.tests.django_utils import (
     ModuleStoreTestCase,
     TEST_DATA_SPLIT_MODULESTORE
 )
+
+
+@ddt.ddt
+class NotificationProviderApiTests(ModuleStoreTestCase, APIClientMixin):
+    """ Test suite for NotificationProvider API views """
+
+    MODULESTORE = TEST_DATA_SPLIT_MODULESTORE
+
+    def setUp(self):
+        super(NotificationProviderApiTests, self).setUp()
+        self.base_uri = reverse('notification_providers')
+
+        self.test_provider_name = "Test Provider Name"
+        self.test_api_url = "http://example.com"
+
+        cache.clear()
+
+    def setup_test_notification_provider(self, notification_provider_data=None):
+        """
+        Creates a new notification provider with given notification_provider_data
+        if notification_provider_data is not present it would create notification provider with test values
+        :param notification_provider_data: Dictionary witch each item represents notification provider attribute
+        :return: newly created notification provider
+        """
+        notification_provider_data = notification_provider_data if notification_provider_data else {}
+        data = {
+            'name': notification_provider_data.get('name', self.test_provider_name),
+            'api_url': notification_provider_data.get('api_url', self.test_api_url),
+
+        }
+        return NotificationProvider.objects.create(name=data['name'], api_url=data['api_url'])
+
+    def test_notification_provider_list(self):
+        notification_providers = []
+
+        for i in xrange(30):
+            data = {
+                'name': 'Test Provider {}'.format(i),
+                'api_url': 'http://notification/provider/{}'.format(i),
+            }
+            notification_providers.append(self.setup_test_notification_provider(notification_provider_data=data))
+
+        response = self.do_get(self.base_uri)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 30)
+        self.assertEqual(len(response.data['results']), 20)
+        self.assertEqual(response.data['num_pages'], 2)
+        for i, provider in enumerate(response.data['results']):
+            self.assertEqual(provider['name'], 'Test Provider {}'.format(i))
+            self.assertEqual(provider['api_url'], 'http://notification/provider/{}'.format(i))
+            self.assertIsNotNone(provider['created'])
+            self.assertIsNotNone(provider['modified'])
+
+        # fetch data with page outside range
+        response = self.do_get('{}?page=5'.format(self.base_uri))
+        self.assertEqual(response.status_code, 404)
+
+        # test with page_size 0, should not paginate and return all results
+        response = self.do_get('{}?page_size=0'.format(self.base_uri))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), len(notification_providers))
 
 
 @ddt.ddt
