@@ -192,11 +192,11 @@ class MobileAppUserView(SecureListAPIView):
     def get_queryset(self):
         """
         Restricts the returned users to a given mobile app,
-        by filtering against a 'mobileapp_id' in kwargs.
+        by filtering against a 'mobile_app_id' in kwargs.
         """
-        return User.objects.filter(mobile_apps__exact=self.kwargs['mobileapp_id'])
+        return User.objects.filter(mobile_apps__exact=self.kwargs['mobile_app_id'])
 
-    def post(self, request, mobileapp_id):
+    def post(self, request, mobile_app_id):
         """
         **POST Parameters**
 
@@ -209,7 +209,7 @@ class MobileAppUserView(SecureListAPIView):
             If the request is successful, the request returns an HTTP 201 "CREATED" response.
         """
         try:
-            mobileapp = MobileApp.objects.get(id=mobileapp_id)
+            mobileapp = MobileApp.objects.get(id=mobile_app_id)
             for user in User.objects.filter(id__in=request.data['users']):
                 mobileapp.users.add(user)
 
@@ -217,7 +217,7 @@ class MobileAppUserView(SecureListAPIView):
         except ObjectDoesNotExist:
             raise Http404
 
-    def delete(self, request, mobileapp_id):
+    def delete(self, request, mobile_app_id):
         """
         **DELETE Parameters**
 
@@ -230,7 +230,7 @@ class MobileAppUserView(SecureListAPIView):
             If the request is successful, the request returns an HTTP 204 "NO CONTENT" response.
         """
         try:
-            mobileapp = MobileApp.objects.get(id=mobileapp_id)
+            mobileapp = MobileApp.objects.get(id=mobile_app_id)
             for user in User.objects.filter(id__in=request.data['users']):
                 mobileapp.users.remove(user)
 
@@ -256,11 +256,11 @@ class MobileAppOrganizationView(SecureListAPIView):
     def get_queryset(self):
         """
         Restricts the returned organizations to a given mobile app,
-        by filtering against a 'mobileapp_id' in kwargs.
+        by filtering against a 'mobile_app_id' in kwargs.
         """
-        return Organization.objects.filter(mobile_apps__exact=self.kwargs['mobileapp_id'])
+        return Organization.objects.filter(mobile_apps__exact=self.kwargs['mobile_app_id'])
 
-    def post(self, request, mobileapp_id):
+    def post(self, request, mobile_app_id):
         """
         **POST Parameters**
 
@@ -273,7 +273,7 @@ class MobileAppOrganizationView(SecureListAPIView):
             If the request is successful, the request returns an HTTP 201 "CREATED" response.
         """
         try:
-            mobileapp = MobileApp.objects.get(id=mobileapp_id)
+            mobileapp = MobileApp.objects.get(id=mobile_app_id)
             for organization in Organization.objects.filter(id__in=request.data['organizations']):
                 mobileapp.organizations.add(organization)
 
@@ -281,7 +281,7 @@ class MobileAppOrganizationView(SecureListAPIView):
         except ObjectDoesNotExist:
             raise Http404
 
-    def delete(self, request, mobileapp_id):
+    def delete(self, request, mobile_app_id):
         """
         **DELETE Parameters**
 
@@ -294,7 +294,7 @@ class MobileAppOrganizationView(SecureListAPIView):
             If the request is successful, the request returns an HTTP 204 "NO CONTENT" response.
         """
         try:
-            mobileapp = MobileApp.objects.get(id=mobileapp_id)
+            mobileapp = MobileApp.objects.get(id=mobile_app_id)
             for organization in Organization.objects.filter(id__in=request.data['organizations']):
                 mobileapp.organizations.remove(organization)
 
@@ -327,25 +327,30 @@ class MobileAppAllUsersNotifications(SecureAPIView):
         * message: Accepted
     """
 
-    def post(self, request, pk):
+    def post(self, request, mobile_app_id):
 
         message = request.data.get('message', None)
         if not message:
             return Response({'message': _('message is missing')}, status.HTTP_400_BAD_REQUEST)
 
         try:
-            mobile_app = MobileApp.objects.get(pk=pk)
+            mobile_app = MobileApp.objects.get(pk=mobile_app_id)
             if not mobile_app.is_active:
                 return Response({'message': _('Mobile app is inactive')}, status.HTTP_403_FORBIDDEN)
+
+            notification_provider = mobile_app.get_notification_provider_name()
+            if not notification_provider:
+                return Response({'message': _('Notification Provider not found')}, status.HTTP_404_NOT_FOUND)
         except ObjectDoesNotExist:
             return Response({'message': _('Mobile app does not exist')}, status.HTTP_404_NOT_FOUND)
 
         try:
             api_keys = mobile_app.get_api_keys()
-            notification_provider = mobile_app.get_notifications_provider()
-            if not notification_provider:
-                return Response({'message': _('Notification Provider not found')}, status.HTTP_404_NOT_FOUND)
-            notification_message = _create_notification_message(message, mobile_app.identifier, send_to_all=True)
+            payload = {
+                'title': message,
+                'send_to_all': True
+            }
+            notification_message = _create_notification_message(mobile_app.identifier, payload)
 
             # Send the notification_msg to the Celery task
             publish_mobile_apps_notifications_task.delay([], notification_message, api_keys, notification_provider)
@@ -381,7 +386,7 @@ class MobileAppSelectedUsersNotifications(SecureAPIView):
         * message: Accepted
     """
 
-    def post(self, request, pk):
+    def post(self, request, mobile_app_id):
 
         message = request.data.get('message', None)
         if not message:
@@ -392,18 +397,20 @@ class MobileAppSelectedUsersNotifications(SecureAPIView):
             return Response({'message': _('Users list is empty')}, status.HTTP_400_BAD_REQUEST)
 
         try:
-            mobile_app = MobileApp.objects.get(pk=pk)
+            mobile_app = MobileApp.objects.get(pk=mobile_app_id)
             if not mobile_app.is_active:
                 return Response({'message': _('Mobile app is inactive')}, status.HTTP_403_FORBIDDEN)
+
+            notification_provider = mobile_app.get_notification_provider_name()
+            if not notification_provider:
+                return Response({'message': _('Notification Provider not found')}, status.HTTP_404_NOT_FOUND)
         except ObjectDoesNotExist:
             return Response({'message': _('Mobile app does not exist')}, status.HTTP_404_NOT_FOUND)
 
         try:
             api_keys = mobile_app.get_api_keys()
-            notification_provider = mobile_app.get_notifications_provider()
-            if not notification_provider:
-                return Response({'message': _('Notification Provider not found')}, status.HTTP_404_NOT_FOUND)
-            notification_message = _create_notification_message(message, mobile_app.identifier)
+            payload = {'title': message}
+            notification_message = _create_notification_message(mobile_app.identifier, payload)
 
             # Send the notification_msg to the Celery task
             publish_mobile_apps_notifications_task.delay(user_ids, notification_message, api_keys,
@@ -439,31 +446,34 @@ class MobileAppOrganizationAllUsersNotifications(SecureAPIView):
         * message: Accepted
     """
 
-    def post(self, request, pk, organization_id):
+    def post(self, request, mobile_app_id, organization_id):
 
         message = request.data.get('message', None)
         if not message:
             return Response({'message': _('message is missing')}, status.HTTP_400_BAD_REQUEST)
 
         try:
-            mobile_app = MobileApp.objects.get(pk=pk)
+            mobile_app = MobileApp.objects.get(pk=mobile_app_id)
             if not mobile_app.is_active:
                 return Response({'message': _('Mobile app is inactive')}, status.HTTP_403_FORBIDDEN)
+
+            notification_provider = mobile_app.get_notification_provider_name()
+            if not notification_provider:
+                return Response({'message': _('Notification Provider not found')}, status.HTTP_404_NOT_FOUND)
         except ObjectDoesNotExist:
             return Response({'message': _('Mobile app does not exist')}, status.HTTP_404_NOT_FOUND)
 
         try:
             organization = mobile_app.organizations.get(id=organization_id)
+            user_ids = organization.users.values_list('id', flat=True).all()
         except ObjectDoesNotExist:
             return Response({'message': _('Organization is not associated with mobile app')},
                             status.HTTP_400_BAD_REQUEST)
+
         try:
-            user_ids = organization.users.values_list('id', flat=True).all()
             api_keys = mobile_app.get_api_keys()
-            notification_provider = mobile_app.get_notifications_provider()
-            if not notification_provider:
-                return Response({'message': _('Notification Provider not found')}, status.HTTP_404_NOT_FOUND)
-            notification_message = _create_notification_message(message, mobile_app.identifier)
+            payload = {'title': message}
+            notification_message = _create_notification_message(mobile_app.identifier, payload)
 
             # Send the notification_msg to the Celery task
             publish_mobile_apps_notifications_task.delay(user_ids, notification_message, api_keys,
@@ -475,14 +485,11 @@ class MobileAppOrganizationAllUsersNotifications(SecureAPIView):
         return Response({'message': _('Accepted')}, status.HTTP_202_ACCEPTED)
 
 
-def _create_notification_message(title, app_identifier, send_to_all=False):
+def _create_notification_message(app_identifier, payload):
     notification_type = get_notification_type(u'open-edx.mobileapps.notifications')
     notification_message = NotificationMessage(
         namespace=app_identifier,
         msg_type=notification_type,
-        payload={
-            'title': title,
-            'send_to_all': send_to_all
-        }
+        payload=payload
     )
     return notification_message

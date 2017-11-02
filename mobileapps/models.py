@@ -70,7 +70,7 @@ class MobileApp(TimeStampedModel):
             'provider_secret': self.provider_secret_decrypted,
         }
 
-    def get_notifications_provider(self):
+    def get_notification_provider_name(self):
         """
         this function returns notification provider name against a given mobile app
         if provider is not available it will return None
