@@ -73,16 +73,22 @@ class MobileAppView(SecureListCreateAPIView):
             2: iOS
             3: Windows
             4: Other
+        * deployment_mechanism: Deployment Mechanism
+            1: Public app store
+            2: Enterprise
+            3: OTA
+            4: Other
         * download_url: Download URL of the app.
         * analytics_url_dev: Analytics url for development environment
         * analytics_url_prod: Analytics url for Production
-        * ua_key: Urban airship key for this app
-        * ua_secret: Urban airship secret
-        * ua_dashboard_url: Urban airship dashboard URL
+        * notification_provider: Notification provider selected for this app
+        * provider_key: Provider key for this app
+        * provider_secret: Provider secret
+        * provider_dashboard_url: Provider dashboard URL
         * current_version: Current available version of the app
         * is_active: App is active or not.
         * users: List of user ids registered in the app
-        * organizations: List of organization ids uses this app
+        * organizations: List of organization ids in this app
 
     **Response Values**
 
@@ -92,7 +98,7 @@ class MobileAppView(SecureListCreateAPIView):
 
         The HTTP 200 response has a paginated list of objects with the following values.
 
-        * id: ID of the mobile app.,
+        * id: ID of the mobile app.
         * created: Datetime it was created in.
         * modified: Datetime it was modified in.
         * identifier: Unique Identifier of the app.
@@ -102,17 +108,55 @@ class MobileAppView(SecureListCreateAPIView):
             2: iOS
             3: Windows
             4: Other
+        * deployment_mechanism: Deployment Mechanism
+            1: Public app store
+            2: Enterprise
+            3: OTA
+            4: Other
         * download_url: Download URL of the app.
         * analytics_url_dev: Analytics url for development environment
         * analytics_url_prod: Analytics url for Production
-        * ua_key: Urban airship key for this app
-        * ua_secret: Urban airship secret
-        * ua_dashboard_url: Urban airship dashboard URL
+        * notification_provider: Notification provider selected for this app
+        * provider_key: Provider key for this app
+        * provider_secret: Provider secret
+        * provider_dashboard_url: Provider dashboard URL
         * current_version: Current available version of the app
         * is_active: App is active or not.
         * updated_by: Record updated by the User.
-        * users: Users registered in the app
-        * organizations: Organizations uses this app
+        * users: List of user ids registered in the app
+        * organizations: List of organization ids in this app
+
+        **POST**
+
+        If the request is successful, the request returns an HTTP 201 "CREATED" response.
+
+        * id: ID of the mobile app.
+        * created: Datetime it was created in.
+        * modified: Datetime it was modified in.
+        * identifier: Unique Identifier of the app.
+        * name: Name of the app,
+        * operating_system: OS version
+            1: Android
+            2: iOS
+            3: Windows
+            4: Other
+        * deployment_mechanism: Deployment Mechanism
+            1: Public app store
+            2: Enterprise
+            3: OTA
+            4: Other
+        * download_url: Download URL of the app.
+        * analytics_url_dev: Analytics url for development environment
+        * analytics_url_prod: Analytics url for Production
+        * notification_provider: Notification provider selected for this app
+        * provider_key: Provider key for this app
+        * provider_secret: Provider secret
+        * provider_dashboard_url: Provider dashboard URL
+        * current_version: Current available version of the app
+        * is_active: App is active or not.
+        * updated_by: Record updated by the User.
+        * users: List of user ids registered in the app
+        * organizations: List of organization ids in this app
     """
 
     serializer_class = MobileAppSerializer
@@ -151,22 +195,29 @@ class MobileAppDetailView(SecureRetrieveUpdateAPIView):
 
         The body of the PUT request must include the following parameters.
 
+        * identifier: Unique Identifier of the app.
         * name: Name of the app,
         * operating_system: OS version
             1: Android
             2: iOS
             3: Windows
             4: Other
+        * deployment_mechanism: Deployment Mechanism
+            1: Public app store
+            2: Enterprise
+            3: OTA
+            4: Other
         * download_url: Download URL of the app.
         * analytics_url_dev: Analytics url for development environment
         * analytics_url_prod: Analytics url for Production
-        * ua_key: Urban airship key for this app
-        * ua_secret: Urban airship secret
-        * ua_dashboard_url: Urban airship dashboard URL
+        * notification_provider: Notification provider selected for this app
+        * provider_key: Provider key for this app
+        * provider_secret: Provider secret
+        * provider_dashboard_url: Provider dashboard URL
         * current_version: Current available version of the app
         * is_active: App is active or not.
         * users: List of user ids registered in the app
-        * organizations: List of organization ids uses this app
+        * organizations: List of organization ids in this app
 
     **Response Values**
 
@@ -176,7 +227,7 @@ class MobileAppDetailView(SecureRetrieveUpdateAPIView):
 
         The HTTP 200 response has a paginated list of objects with the following values.
 
-        * id: ID of the mobile app.,
+        * id: ID of the mobile app.
         * created: Datetime it was created in.
         * modified: Datetime it was modified in.
         * identifier: Unique Identifier of the app.
@@ -186,17 +237,23 @@ class MobileAppDetailView(SecureRetrieveUpdateAPIView):
             2: iOS
             3: Windows
             4: Other
+        * deployment_mechanism: Deployment Mechanism
+            1: Public app store
+            2: Enterprise
+            3: OTA
+            4: Other
         * download_url: Download URL of the app.
         * analytics_url_dev: Analytics url for development environment
         * analytics_url_prod: Analytics url for Production
-        * ua_key: Urban airship key for this app
-        * ua_secret: Urban airship secret
-        * ua_dashboard_url: Urban airship dashboard URL
+        * notification_provider: Notification provider selected for this app
+        * provider_key: Provider key for this app
+        * provider_secret: Provider secret
+        * provider_dashboard_url: Provider dashboard URL
         * current_version: Current available version of the app
         * is_active: App is active or not.
         * updated_by: Record updated by the User.
-        * users: Users registered in the app
-        * organizations: Organizations uses this app
+        * users: List of user ids registered in the app
+        * organizations: List of organization ids in this app
     """
 
     queryset = MobileApp.objects.all()
