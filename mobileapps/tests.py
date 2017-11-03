@@ -101,6 +101,7 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.test_mobileapp_name = str(uuid.uuid4())
         self.test_mobileapp_identifier = str(uuid.uuid4())
         self.test_mobileapp_operating_system = 1
+        self.test_mobileapp_deployment_mechanism = 1
         self.test_mobileapp_current_version = str(uuid.uuid4())
 
         self.user = UserFactory.create(username='test', email='test@edx.org', password='test_password')
@@ -122,6 +123,8 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
             'identifier': mobileapp_data.get('identifier', self.test_mobileapp_identifier),
             'operating_system': mobileapp_data.get('operating_system', self.test_mobileapp_operating_system),
             'current_version': mobileapp_data.get('current_version', self.test_mobileapp_current_version),
+            'deployment_mechanism': mobileapp_data.get(
+                'deployment_mechanism', self.test_mobileapp_deployment_mechanism),
             'users': mobileapp_data.get('users', []),
             'organizations': mobileapp_data.get('organizations', []),
         }
@@ -142,7 +145,6 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
             data = {
                 'name': 'Test Mobile App {}'.format(i),
                 'identifier': 'Test Mobile App Identifier {}'.format(i),
-                'current_version': '1.0',
                 'users': [user.id for user in users],
                 'organizations': [organization.id for organization in organizations],
             }
@@ -260,6 +262,7 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
             identifier='ABC',
             current_version=self.test_mobileapp_current_version,
             operating_system=self.test_mobileapp_operating_system,
+            deployment_mechanism=self.test_mobileapp_deployment_mechanism,
             updated_by=self.user,
         )
 
@@ -283,6 +286,7 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
             identifier='ABC',
             operating_system=self.test_mobileapp_operating_system,
             current_version=self.test_mobileapp_current_version,
+            deployment_mechanism=self.test_mobileapp_deployment_mechanism,
             updated_by=self.user
         )
 
@@ -303,6 +307,7 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
             identifier='ABC',
             operating_system=self.test_mobileapp_operating_system,
             current_version=self.test_mobileapp_current_version,
+            deployment_mechanism=self.test_mobileapp_deployment_mechanism,
             updated_by=self.user
         )
 
@@ -315,6 +320,7 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
             identifier='ABC',
             operating_system=self.test_mobileapp_operating_system,
             current_version=self.test_mobileapp_current_version,
+            deployment_mechanism=self.test_mobileapp_deployment_mechanism,
             updated_by=self.user,
         )
 
@@ -348,6 +354,7 @@ class MobileappsUserApiTests(ModuleStoreTestCase, APIClientMixin):
         self.test_mobileapp_name = str(uuid.uuid4())
         self.test_mobileapp_identifier = str(uuid.uuid4())
         self.test_mobileapp_operating_system = 1
+        self.test_mobileapp_deployment_mechanism = 1
         self.test_mobileapp_current_version = str(uuid.uuid4())
         self.users = UserFactory.create_batch(5)
 
@@ -376,6 +383,7 @@ class MobileappsUserApiTests(ModuleStoreTestCase, APIClientMixin):
             identifier=mobileapp_data.get('identifier', self.test_mobileapp_identifier),
             operating_system=mobileapp_data.get('operating_system', self.test_mobileapp_operating_system),
             current_version=mobileapp_data.get('current_version', self.test_mobileapp_current_version),
+            deployment_mechanism=self.test_mobileapp_deployment_mechanism,
             updated_by=self.user,
         )
 
@@ -461,6 +469,7 @@ class MobileappsOrganizationApiTests(ModuleStoreTestCase, APIClientMixin):
         self.test_mobileapp_name = str(uuid.uuid4())
         self.test_mobileapp_identifier = str(uuid.uuid4())
         self.test_mobileapp_operating_system = 1
+        self.test_mobileapp_deployment_mechanism = 1
         self.test_mobileapp_current_version = str(uuid.uuid4())
         self.organizations = [
             Organization.objects.create(name='ABC Organization'),
@@ -492,6 +501,7 @@ class MobileappsOrganizationApiTests(ModuleStoreTestCase, APIClientMixin):
             identifier=mobileapp_data.get('identifier', self.test_mobileapp_identifier),
             operating_system=mobileapp_data.get('operating_system', self.test_mobileapp_operating_system),
             current_version=mobileapp_data.get('current_version', self.test_mobileapp_current_version),
+            deployment_mechanism=self.test_mobileapp_deployment_mechanism,
             updated_by=self.user,
         )
 
