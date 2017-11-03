@@ -5,21 +5,25 @@ Run these tests @ Devstack:
 paver test_system -s lms -t mobileapps
 """
 import uuid
+
 import ddt
+from mock import patch
+from django.core.cache import cache
 from django.core.urlresolvers import reverse
 from django.test.client import Client
-
-from mobileapps.models import MobileApp, NotificationProvider
-from student.tests.factories import CourseEnrollmentFactory, UserFactory, GroupFactory
-from edx_solutions_organizations.models import Organization
-from django.core.cache import cache
+from edx_notifications import startup
 from edx_solutions_api_integration.test_utils import (
     APIClientMixin,
 )
+from edx_solutions_organizations.models import Organization
+from edx_solutions_api_integration.utils import StringCipher
+from student.tests.factories import UserFactory
 from xmodule.modulestore.tests.django_utils import (
     ModuleStoreTestCase,
     TEST_DATA_SPLIT_MODULESTORE
 )
+
+from mobileapps.models import MobileApp, NotificationProvider
 
 
 @ddt.ddt
@@ -573,3 +577,201 @@ class MobileappsOrganizationApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(len(response.data['results']), 1)
         self.assertEqual(response.data['num_pages'], 1)
         self.assertEqual(response.data['results'][0]['name'], self.organizations[1].name)
+
+
+@ddt.ddt
+class MobileappsNotificationsTests(ModuleStoreTestCase, APIClientMixin):
+    """ Test suite for Mobileapps Notifications API views """
+
+    MODULESTORE = TEST_DATA_SPLIT_MODULESTORE
+
+    @classmethod
+    def setUpClass(cls):
+        super(MobileappsNotificationsTests, cls).setUpClass()
+        cls.base_mobileapps_uri = reverse('mobileapps')
+
+        notification_provider = NotificationProvider.objects.create(name='urban-airship')
+        users = UserFactory.create_batch(5)
+        organization1 = Organization.objects.create(name='ABC Organization')
+        organization2 = Organization.objects.create(name='XYZ Organization')
+
+        for user in users:
+            organization1.users.add(user)
+
+        organizations = [organization1, organization2]
+
+        cls.organization1_id = organization1.id
+        cls.user = UserFactory.create(username='test', email='test@edx.org', password='test_password')
+        cls.client = Client()
+        cls.client.login(username=cls.user.username, password='test_password')
+
+        app_data = {
+            'identifier': 'ABC identifier',
+            'notification_provider_id': notification_provider.id,
+            'is_active': True
+        }
+        mobile_app1 = cls._setup_test_mobileapp(app_data, users, organizations)
+        cls.mobile_app1_id = mobile_app1.id
+
+        app_data = {
+            'identifier': 'LMN identifier',
+            'notification_provider_id': None,
+            'is_active': True
+        }
+        mobile_app2 = cls._setup_test_mobileapp(app_data)
+        cls.mobile_app2_id = mobile_app2.id
+
+        app_data = {
+            'identifier': 'XYZ identifier',
+            'notification_provider_id': None,
+            'is_active': False
+        }
+        mobile_app3 = cls._setup_test_mobileapp(app_data)
+        cls.mobile_app3_id = mobile_app3.id
+
+        startup.initialize()
+        cache.clear()
+
+    @classmethod
+    def _setup_test_mobileapp(cls, app_data, users=[], organizations=[]):
+        """
+        create a mobile app and associate organizations and users
+        :param
+            app_data: app data like identifier, notification_provider_id and is_active
+            users: List of users to add in mobile app
+            organizations: List of organization ids to add in mobile app
+        :return: newly created mobile
+        """
+
+        mobile_app = MobileApp.objects.create(name="Test App",
+                                              identifier=app_data['identifier'],
+                                              operating_system=1,
+                                              current_version=1,
+                                              provider_key=StringCipher.encrypt('test key'),
+                                              provider_secret=StringCipher.encrypt('test secret'),
+                                              notification_provider_id=app_data['notification_provider_id'],
+                                              is_active=app_data['is_active'],
+                                              updated_by=cls.user)
+
+        for organization in organizations:
+            mobile_app.organizations.add(organization)
+        for user in users:
+            mobile_app.users.add(user)
+
+        return mobile_app
+
+    @patch("edx_notifications.channels.urban_airship.UrbanAirshipNotificationChannelProvider.call_ua_push_api")
+    def test_mobileapp_all_users_notifications(self, mock_ua_push_api):
+        """
+        send a notification to all the users of a given mobile app
+        """
+        data = {'message': 'Test message to all the users of an app'}
+        mock_ua_push_api.return_value = {'ok': 'true'}
+        response = self.do_post(
+            reverse('mobileapps-all-users-notifications', kwargs={'mobile_app_id': self.mobile_app1_id}), data=data)
+        self.assertEqual(response.status_code, 202)
+
+        response = self.do_post(
+            reverse('mobileapps-all-users-notifications', kwargs={'mobile_app_id': 0}), data=data)
+        self.assertEqual(response.status_code, 404)
+
+        # test without notification provider
+        response = self.do_post(
+            reverse('mobileapps-all-users-notifications', kwargs={'mobile_app_id': self.mobile_app2_id}), data=data)
+        self.assertEqual(response.status_code, 404)
+
+        # test inactive app
+        response = self.do_post(
+            reverse('mobileapps-all-users-notifications', kwargs={'mobile_app_id': self.mobile_app3_id}), data=data)
+        self.assertEqual(response.status_code, 403)
+
+        # test without message
+        data = {'message': ''}
+        response = self.do_post(
+            reverse('mobileapps-all-users-notifications', kwargs={'mobile_app_id': self.mobile_app1_id}), data=data)
+        self.assertEqual(response.status_code, 400)
+
+    @patch("edx_notifications.channels.urban_airship.UrbanAirshipNotificationChannelProvider.call_ua_push_api")
+    def test_mobileapp_selected_users_notifications(self, mock_ua_push_api):
+        """
+        send a notification to a list of users of a given mobile app
+        """
+        data = {
+            'message': 'Test message to selected users of an app',
+            'users': [1, 2, 4]
+        }
+        mock_ua_push_api.return_value = {'ok': 'true'}
+        response = self.do_post(
+            reverse('mobileapps-selected-users-notifications', kwargs={'mobile_app_id': self.mobile_app1_id}), data=data)
+
+        self.assertEqual(response.status_code, 202)
+
+        response = self.do_post(
+            reverse('mobileapps-selected-users-notifications', kwargs={'mobile_app_id': 0}), data=data)
+        self.assertEqual(response.status_code, 404)
+
+        # test without notification provider
+        response = self.do_post(
+            reverse('mobileapps-selected-users-notifications', kwargs={'mobile_app_id': self.mobile_app2_id}), data=data)
+        self.assertEqual(response.status_code, 404)
+
+        # test inactive app
+        response = self.do_post(
+            reverse('mobileapps-selected-users-notifications', kwargs={'mobile_app_id': self.mobile_app3_id}), data=data)
+        self.assertEqual(response.status_code, 403)
+
+        # test without user_ids list
+        data = {'message': 'Test message to selected users of an app',}
+        response = self.do_post(
+            reverse('mobileapps-selected-users-notifications', kwargs={'mobile_app_id': self.mobile_app1_id}), data=data)
+        self.assertEqual(response.status_code, 400)
+
+        # test without message
+        data = {'message': ''}
+        response = self.do_post(
+            reverse('mobileapps-selected-users-notifications', kwargs={'mobile_app_id': self.mobile_app1_id}), data=data)
+        self.assertEqual(response.status_code, 400)
+
+
+    @patch("edx_notifications.channels.urban_airship.UrbanAirshipNotificationChannelProvider.call_ua_push_api")
+    def test_mobileapp_organization_users_notifications(self, mock_ua_push_api):
+        """
+        send a notification to all the users of an organization associated with an app
+        """
+        data = {'message': 'Test message to all the users of an organization'}
+        mock_ua_push_api.return_value = {'ok': 'true'}
+        response = self.do_post(reverse('mobileapps-organization-all-users-notifications',
+                                        kwargs={'mobile_app_id': self.mobile_app1_id,
+                                                'organization_id': self.organization1_id}), data=data)
+
+        self.assertEqual(response.status_code, 202)
+
+        response = self.do_post(reverse('mobileapps-organization-all-users-notifications',
+                                        kwargs={'mobile_app_id': 0, 'organization_id': self.organization1_id}),
+                                data=data)
+        self.assertEqual(response.status_code, 404)
+
+        # test without notification provider
+        response = self.do_post(reverse('mobileapps-organization-all-users-notifications',
+                                        kwargs={'mobile_app_id': self.mobile_app2_id,
+                                                'organization_id': self.organization1_id}), data=data)
+        self.assertEqual(response.status_code, 404)
+
+        # test inactive app
+        response = self.do_post(reverse('mobileapps-organization-all-users-notifications',
+                                        kwargs={'mobile_app_id': self.mobile_app3_id,
+                                                'organization_id': self.organization1_id}), data=data)
+        self.assertEqual(response.status_code, 403)
+
+        # test with an invalid organization id
+        response = self.do_post(reverse('mobileapps-organization-all-users-notifications',
+                                        kwargs={'mobile_app_id': self.mobile_app1_id,
+                                                'organization_id': 0}), data=data)
+        self.assertEqual(response.status_code, 400)
+
+        # test without message
+        data = {'message': ''}
+        response = self.do_post(reverse('mobileapps-organization-all-users-notifications',
+                                        kwargs={'mobile_app_id': self.mobile_app1_id,
+                                                'organization_id': self.organization1_id}), data=data)
+        self.assertEqual(response.status_code, 400)
