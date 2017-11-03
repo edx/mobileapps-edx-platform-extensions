@@ -18,8 +18,8 @@ from edx_solutions_organizations.models import Organization
 from edx_solutions_organizations.serializers import BasicOrganizationSerializer
 
 
-from mobileapps.models import MobileApp
-from mobileapps.serializers import MobileAppSerializer
+from mobileapps.models import MobileApp, NotificationProvider
+from mobileapps.serializers import MobileAppSerializer, NotificationProviderSerializer
 from mobileapps.tasks import publish_mobile_apps_notifications_task
 
 
