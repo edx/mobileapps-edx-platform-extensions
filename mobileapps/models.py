@@ -64,6 +64,14 @@ class MobileApp(TimeStampedModel):
         if self.provider_secret:
             return StringCipher.decrypt(self.provider_secret.encode())
 
+    @property
+    def operating_system_choice_text(self):
+        return dict(OS_CHOICES)[self.operating_system]
+
+    @property
+    def deployment_mechanism_choice_text(self):
+        return dict(DEPLOYMENT_CHOICES)[self.deployment_mechanism]
+
     def get_api_keys(self):
         return {
             'provider_key': self.provider_key_decrypted,

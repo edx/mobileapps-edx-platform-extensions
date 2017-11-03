@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from mobileapps.models import MobileApp, NotificationProvider
+from mobileapps.models import MobileApp, NotificationProvider, OS_CHOICES, DEPLOYMENT_CHOICES
 from edx_solutions_api_integration.utils import StringCipher
 
 
@@ -11,11 +11,17 @@ class NotificationProviderSerializer(serializers.ModelSerializer):
 class MobileAppSerializer(serializers.ModelSerializer):
     provider_key = serializers.CharField(source="provider_key_decrypted", required=False)
     provider_secret = serializers.CharField(source="provider_secret_decrypted", required=False)
+    operating_system = serializers.ChoiceField(choices=OS_CHOICES, required=False)
+    deployment_mechanism = serializers.ChoiceField(choices=DEPLOYMENT_CHOICES, required=False)
 
     class Meta:
         model = MobileApp
+        extra_kwargs = {'updated_by': {'read_only': True}}
 
-    def _set_provider_keys_and_user(self, validated_data):
+    def _set_custom_validated_data(self, validated_data):
+        '''
+        Here we are adding decrypted keys and adding current user in 'updated_by'
+        '''
         encrypted_provider_key = None
         encrypted_provider_secret = None
 
@@ -27,12 +33,13 @@ class MobileAppSerializer(serializers.ModelSerializer):
 
         validated_data['provider_key'] = encrypted_provider_key
         validated_data['provider_secret'] = encrypted_provider_secret
+
         validated_data['updated_by'] = self.context['request'].user
 
     def create(self, validated_data):
-        self._set_provider_keys_and_user(validated_data)
+        self._set_custom_validated_data(validated_data)
         return super(MobileAppSerializer, self).create(validated_data)
 
     def update(self, instance, validated_data):
-        self._set_provider_keys_and_user(validated_data)
+        self._set_custom_validated_data(validated_data)
         return super(MobileAppSerializer, self).update(instance, validated_data)
