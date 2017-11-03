@@ -94,7 +94,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='mobileapp',
             name='updated_by',
-            field=models.ForeignKey(to=settings.AUTH_USER_MODEL, on_delete=django.db.models.deletion.PROTECT),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, blank=True, to=settings.AUTH_USER_MODEL),
         ),
         migrations.AddField(
             model_name='mobileapp',
