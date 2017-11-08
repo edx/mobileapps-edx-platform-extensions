@@ -613,8 +613,9 @@ class MobileappsNotificationsTests(ModuleStoreTestCase, APIClientMixin):
             organization1.users.add(user)
 
         organizations = [organization1, organization2]
-
         cls.organization1_id = organization1.id
+
+        cls.user = UserFactory.create()
 
         app_data = {
             'identifier': 'ABC identifier',
