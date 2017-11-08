@@ -39,6 +39,10 @@ class NotificationProviderApiTests(ModuleStoreTestCase, APIClientMixin):
         self.test_provider_name = "Test Provider Name"
         self.test_api_url = "http://example.com"
 
+        self.user = UserFactory.create(username='test', email='test@edx.org', password='test_password')
+        self.client = Client()
+        self.client.login(username=self.user.username, password='test_password')
+
         cache.clear()
 
     def setup_test_notification_provider(self, notification_provider_data=None):
@@ -611,9 +615,6 @@ class MobileappsNotificationsTests(ModuleStoreTestCase, APIClientMixin):
         organizations = [organization1, organization2]
 
         cls.organization1_id = organization1.id
-        cls.user = UserFactory.create(username='test', email='test@edx.org', password='test_password')
-        cls.client = Client()
-        cls.client.login(username=cls.user.username, password='test_password')
 
         app_data = {
             'identifier': 'ABC identifier',
@@ -640,6 +641,15 @@ class MobileappsNotificationsTests(ModuleStoreTestCase, APIClientMixin):
         cls.mobile_app3_id = mobile_app3.id
 
         startup.initialize()
+        cache.clear()
+
+    def setUp(self):
+        super(MobileappsNotificationsTests, self).setUp()
+
+        self.user = UserFactory.create(username='test', email='test@edx.org', password='test_password')
+        self.client = Client()
+        self.client.login(username=self.user.username, password='test_password')
+
         cache.clear()
 
     @classmethod

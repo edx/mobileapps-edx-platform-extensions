@@ -8,10 +8,10 @@ from rest_framework.response import Response
 from edx_notifications.data import NotificationMessage
 from edx_notifications.lib.publisher import get_notification_type
 from edx_solutions_api_integration.permissions import (
-    SecureListCreateAPIView,
-    SecureRetrieveUpdateAPIView,
-    SecureListAPIView,
-    SecureAPIView,
+    MobileAPIView,
+    MobileListAPIView,
+    MobileListCreateAPIView,
+    MobileRetrieveUpdateAPIView,
 )
 from edx_solutions_api_integration.users.serializers import SimpleUserSerializer
 from edx_solutions_organizations.models import Organization
@@ -23,7 +23,7 @@ from mobileapps.serializers import MobileAppSerializer, NotificationProviderSeri
 from mobileapps.tasks import publish_mobile_apps_notifications_task
 
 
-class NotificationProviderView(SecureListAPIView):
+class NotificationProviderView(MobileListAPIView):
     """
     **Use Case**
 
@@ -51,7 +51,7 @@ class NotificationProviderView(SecureListAPIView):
     queryset = NotificationProvider.objects.all()
 
 
-class MobileAppView(SecureListCreateAPIView):
+class MobileAppView(MobileListCreateAPIView):
     """
     **Use Case**
 
@@ -179,7 +179,7 @@ class MobileAppView(SecureListCreateAPIView):
         return queryset
 
 
-class MobileAppDetailView(SecureRetrieveUpdateAPIView):
+class MobileAppDetailView(MobileRetrieveUpdateAPIView):
     """
     **Use Case**
 
@@ -260,7 +260,7 @@ class MobileAppDetailView(SecureRetrieveUpdateAPIView):
     serializer_class = MobileAppSerializer
 
 
-class MobileAppUserView(SecureListAPIView):
+class MobileAppUserView(MobileListAPIView):
     """
     **Use Case**
 
@@ -324,7 +324,7 @@ class MobileAppUserView(SecureListAPIView):
             raise Http404
 
 
-class MobileAppOrganizationView(SecureListAPIView):
+class MobileAppOrganizationView(MobileListAPIView):
     """
     **Use Case**
 
@@ -388,7 +388,7 @@ class MobileAppOrganizationView(SecureListAPIView):
             raise Http404
 
 
-class MobileAppAllUsersNotifications(SecureAPIView):
+class MobileAppAllUsersNotifications(MobileAPIView):
     """
     **Use Cases**
 
@@ -446,7 +446,7 @@ class MobileAppAllUsersNotifications(SecureAPIView):
         return Response({'message': _('Accepted')}, status.HTTP_202_ACCEPTED)
 
 
-class MobileAppSelectedUsersNotifications(SecureAPIView):
+class MobileAppSelectedUsersNotifications(MobileAPIView):
     """
     **Use Cases**
 
@@ -507,7 +507,7 @@ class MobileAppSelectedUsersNotifications(SecureAPIView):
         return Response({'message': _('Accepted')}, status.HTTP_202_ACCEPTED)
 
 
-class MobileAppOrganizationAllUsersNotifications(SecureAPIView):
+class MobileAppOrganizationAllUsersNotifications(MobileAPIView):
     """
     **Use Cases**
 
