@@ -17,7 +17,6 @@ from edx_solutions_api_integration.users.serializers import SimpleUserSerializer
 from edx_solutions_organizations.models import Organization
 from edx_solutions_organizations.serializers import BasicOrganizationSerializer
 
-
 from mobileapps.models import MobileApp, NotificationProvider
 from mobileapps.serializers import MobileAppSerializer, NotificationProviderSerializer
 from mobileapps.tasks import publish_mobile_apps_notifications_task
@@ -386,6 +385,57 @@ class MobileAppOrganizationView(MobileListAPIView):
             return Response({}, status=status.HTTP_204_NO_CONTENT)
         except ObjectDoesNotExist:
             raise Http404
+
+
+class MobileAppsNotifications(MobileAPIView):
+    """
+    **Use Cases**
+
+        send a push notification to all the users of all active apps
+        using app's push notifications provider.
+
+    **Example Requests**
+
+        POST /api/server/mobileapps/notification
+
+        The body of the POST request must include the following parameters.
+
+        * message: notification message
+
+    **Response Values**
+
+        If the request is successful, the request returns an HTTP 202 "Accepted" response.
+
+        The HTTP 202 response has the following value.
+
+        * message: Accepted
+    """
+
+    def post(self, request):
+
+        message = request.data.get('message', None)
+        if not message:
+            return Response({'message': _('message is missing')}, status.HTTP_400_BAD_REQUEST)
+        payload = {
+            'title': message,
+            'send_to_all': True
+        }
+
+        try:
+            mobile_apps = MobileApp.objects.filter(is_active=True)
+            for mobile_app in mobile_apps:
+                notification_provider = mobile_app.get_notification_provider_name()
+                if notification_provider:
+                    api_keys = mobile_app.get_api_keys()
+                    notification_message = _create_notification_message(mobile_app.identifier, payload)
+
+                    # Send the notification_msg to the Celery task
+                    publish_mobile_apps_notifications_task.delay([], notification_message, api_keys,
+                                                                 notification_provider)
+        except Exception, ex:  # pylint: disable=broad-except
+            return Response({'message':  _('Server error')}, status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({'message': _('Accepted')}, status.HTTP_202_ACCEPTED)
 
 
 class MobileAppAllUsersNotifications(MobileAPIView):
