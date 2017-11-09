@@ -422,16 +422,14 @@ class MobileAppsNotifications(MobileAPIView):
         }
 
         try:
-            mobile_apps = MobileApp.objects.filter(is_active=True)
+            mobile_apps = MobileApp.objects.filter(is_active=True, notification_provider__isnull=False)
             for mobile_app in mobile_apps:
                 notification_provider = mobile_app.get_notification_provider_name()
-                if notification_provider:
-                    api_keys = mobile_app.get_api_keys()
-                    notification_message = _create_notification_message(mobile_app.identifier, payload)
+                api_keys = mobile_app.get_api_keys()
+                notification_message = _create_notification_message(mobile_app.identifier, payload)
 
-                    # Send the notification_msg to the Celery task
-                    publish_mobile_apps_notifications_task.delay([], notification_message, api_keys,
-                                                                 notification_provider)
+                # Send the notification_msg to the Celery task
+                publish_mobile_apps_notifications_task.delay([], notification_message, api_keys, notification_provider)
         except Exception, ex:  # pylint: disable=broad-except
             return Response({'message':  _('Server error')}, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
