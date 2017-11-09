@@ -641,6 +641,14 @@ class MobileappsNotificationsTests(ModuleStoreTestCase, APIClientMixin):
         mobile_app3 = cls._setup_test_mobileapp(app_data)
         cls.mobile_app3_id = mobile_app3.id
 
+        users = UserFactory.create_batch(5)
+        app_data = {
+            'identifier': 'WXY identifier',
+            'notification_provider_id': notification_provider.id,
+            'is_active': True
+        }
+        cls._setup_test_mobileapp(app_data, users)
+
         startup.initialize()
         cache.clear()
 
@@ -680,6 +688,21 @@ class MobileappsNotificationsTests(ModuleStoreTestCase, APIClientMixin):
             mobile_app.users.add(user)
 
         return mobile_app
+
+    @patch("edx_notifications.channels.urban_airship.UrbanAirshipNotificationChannelProvider.call_ua_push_api")
+    def test_mobileapps_notifications(self, mock_ua_push_api):
+        """
+        send a notification to all the users of all active mobile apps
+        """
+        data = {'message': 'Test message to all the users of all active apps'}
+        mock_ua_push_api.return_value = {'ok': 'true'}
+        response = self.do_post(reverse('mobileapps-notifications'), data=data)
+        self.assertEqual(response.status_code, 202)
+
+        # test without message
+        data = {'message': ''}
+        response = self.do_post(reverse('mobileapps-notifications'), data=data)
+        self.assertEqual(response.status_code, 400)
 
     @patch("edx_notifications.channels.urban_airship.UrbanAirshipNotificationChannelProvider.call_ua_push_api")
     def test_mobileapp_all_users_notifications(self, mock_ua_push_api):

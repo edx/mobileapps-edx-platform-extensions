@@ -10,6 +10,7 @@ urlpatterns = patterns(
     url(r'^(?P<mobile_app_id>[0-9]+)/users$', mobile_views.MobileAppUserView.as_view(), name='mobileapps-users'),
     url(r'^(?P<mobile_app_id>[0-9]+)/organizations$',
         mobile_views.MobileAppOrganizationView.as_view(), name='mobileapps-organizations'),
+    url(r'^notification$', mobile_views.MobileAppsNotifications.as_view(), name='mobileapps-notifications'),
     url(r'^(?P<mobile_app_id>[0-9]+)/notification$', mobile_views.MobileAppAllUsersNotifications.as_view(),
         name='mobileapps-all-users-notifications'),
     url(r'^(?P<mobile_app_id>[0-9]+)/users/notification$', mobile_views.MobileAppSelectedUsersNotifications.as_view(),
