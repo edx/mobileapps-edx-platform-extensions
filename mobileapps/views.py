@@ -602,7 +602,7 @@ class MobileAppOrganizationAllUsersNotifications(MobileAPIView):
 def _create_notification_message(app_id, payload):
     notification_type = get_notification_type(u'open-edx.mobileapps.notifications')
     notification_message = NotificationMessage(
-        namespace=app_id,
+        namespace=str(app_id),
         msg_type=notification_type,
         payload=payload
     )
