@@ -103,8 +103,8 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.base_mobileapps_uri = reverse('mobileapps')
 
         self.test_mobileapp_name = str(uuid.uuid4())
-        self.test_mobileapp_identifier = str(uuid.uuid4())
-        self.test_mobileapp_operating_system = 1
+        self.test_mobileapp_ios_app_id = str(uuid.uuid4())
+        self.test_mobileapp_android_app_id = str(uuid.uuid4())
         self.test_mobileapp_deployment_mechanism = 1
         self.test_mobileapp_current_version = str(uuid.uuid4())
 
@@ -124,8 +124,8 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         mobileapp_data = mobileapp_data if mobileapp_data else {}
         data = {
             'name': mobileapp_data.get('name', self.test_mobileapp_name),
-            'identifier': mobileapp_data.get('identifier', self.test_mobileapp_identifier),
-            'operating_system': mobileapp_data.get('operating_system', self.test_mobileapp_operating_system),
+            'android_app_id': mobileapp_data.get('android_app_id', self.test_mobileapp_android_app_id),
+            'ios_app_id': mobileapp_data.get('ios_app_id', self.test_mobileapp_ios_app_id),
             'current_version': mobileapp_data.get('current_version', self.test_mobileapp_current_version),
             'deployment_mechanism': mobileapp_data.get(
                 'deployment_mechanism', self.test_mobileapp_deployment_mechanism),
@@ -148,7 +148,6 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         for i in xrange(30):
             data = {
                 'name': 'Test Mobile App {}'.format(i),
-                'identifier': 'Test Mobile App Identifier {}'.format(i),
                 'users': [user.id for user in users],
                 'organizations': [organization.id for organization in organizations],
             }
@@ -180,9 +179,9 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
     def test_mobileapps_list_search_by_app_name(self):
         mobile_apps = []
 
-        mobile_apps.append(self.setup_test_mobileapp(mobileapp_data={"name": 'ABC App', "identifier": "ABC"}))
-        mobile_apps.append(self.setup_test_mobileapp(mobileapp_data={"name": 'LMN App', "identifier": "LMN"}))
-        mobile_apps.append(self.setup_test_mobileapp(mobileapp_data={"name": 'XYZ App', "identifier": "XYZ"}))
+        mobile_apps.append(self.setup_test_mobileapp(mobileapp_data={"name": 'ABC App'}))
+        mobile_apps.append(self.setup_test_mobileapp(mobileapp_data={"name": 'LMN App'}))
+        mobile_apps.append(self.setup_test_mobileapp(mobileapp_data={"name": 'XYZ App'}))
 
         response = self.do_get('{}?app_name=xyz'.format(self.base_mobileapps_uri))
 
@@ -190,7 +189,6 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['count'], 1)
         self.assertEqual(response.data['num_pages'], 1)
         self.assertEqual(response.data['results'][0]['name'], "XYZ App")
-        self.assertEqual(response.data['results'][0]['identifier'], "XYZ")
 
         response = self.do_get('{}?app_name=app'.format(self.base_mobileapps_uri))
 
@@ -198,7 +196,6 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['count'], 3)
         self.assertEqual(response.data['num_pages'], 1)
         self.assertEqual(response.data['results'][0]['name'], "ABC App")
-        self.assertEqual(response.data['results'][0]['identifier'], "ABC")
 
         response = self.do_get('{}?app_name=query'.format(self.base_mobileapps_uri))
 
@@ -212,26 +209,26 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
 
         mobile_apps.append(self.setup_test_mobileapp(
             mobileapp_data={
-                "name": 'ABC App', "identifier": "ABC", "organizations": [organization1.id, organization2.id]})
+                "name": 'ABC App', "organizations": [organization1.id, organization2.id]})
         )
 
         mobile_apps.append(self.setup_test_mobileapp(
             mobileapp_data={
-                "name": 'XYZ App', "identifier": "XYZ", "organizations": [organization2.id]})
+                "name": 'XYZ App', "organizations": [organization2.id]})
         )
 
         response = self.do_get('{}?organization_name=xyz'.format(self.base_mobileapps_uri))
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['count'], 2)
-        self.assertEqual(response.data['results'][0]['identifier'], "ABC")
-        self.assertEqual(response.data['results'][1]['identifier'], "XYZ")
+        self.assertEqual(response.data['results'][0]['name'], "ABC App")
+        self.assertEqual(response.data['results'][1]['name'], "XYZ App")
 
         response = self.do_get('{}?organization_name=abc'.format(self.base_mobileapps_uri))
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['count'], 1)
-        self.assertEqual(response.data['results'][0]['identifier'], "ABC")
+        self.assertEqual(response.data['results'][0]['name'], "ABC App")
 
         response = self.do_get('{}?organization_name=query'.format(self.base_mobileapps_uri))
 
@@ -239,19 +236,19 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['count'], 0)
 
     def test_mobileapps_detail_get(self):
-        mobileapp_data = self.setup_test_mobileapp(mobileapp_data={"name": 'ABC App', "identifier": 'ABC'})
+        mobileapp_data = self.setup_test_mobileapp(mobileapp_data={"name": 'ABC App'})
 
         response = self.do_get(reverse('mobileapps-detail', kwargs={'pk': mobileapp_data['id']}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['name'], 'ABC App')
-        self.assertEqual(response.data['identifier'], 'ABC')
         self.assertEqual(response.data['updated_by'], self.user.id)
         self.assertEqual(response.data['is_active'], True)
-        self.assertIn("operating_system", response.data)
+        self.assertIn("android_app_id", response.data)
+        self.assertIn("ios_app_id", response.data)
         self.assertIn("deployment_mechanism", response.data)
-        self.assertIn("download_url", response.data)
-        self.assertIn("analytics_url_dev", response.data)
-        self.assertIn("analytics_url_prod", response.data)
+        self.assertIn("ios_download_url", response.data)
+        self.assertIn("android_download_url", response.data)
+        self.assertIn("analytics_url", response.data)
         self.assertIn("notification_provider", response.data)
         self.assertIn("provider_key", response.data)
         self.assertIn("provider_secret", response.data)
@@ -263,35 +260,37 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
     def test_mobileapps_detail_put(self):
         mobileapp = MobileApp.objects.create(
             name='ABC App',
-            identifier='ABC',
             current_version=self.test_mobileapp_current_version,
-            operating_system=self.test_mobileapp_operating_system,
+            ios_app_id=self.test_mobileapp_ios_app_id,
+            android_app_id=self.test_mobileapp_android_app_id,
             deployment_mechanism=self.test_mobileapp_deployment_mechanism,
             updated_by=self.user,
         )
 
         data = {
             'name': "XYZ App",
-            'identifier': mobileapp.identifier,
+            'ios_app_id': mobileapp.ios_app_id,
+            'android_app_id': mobileapp.android_app_id,
             'current_version': mobileapp.current_version,
-            'operating_system': mobileapp.operating_system,
+            'deployment_mechanism': mobileapp.deployment_mechanism,
         }
 
         response = self.do_put(reverse('mobileapps-detail', kwargs={'pk': mobileapp.id}), data=data)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['name'], data['name'])
-        self.assertEqual(response.data['identifier'], mobileapp.identifier)
+        self.assertEqual(response.data['ios_app_id'], mobileapp.ios_app_id)
+        self.assertEqual(response.data['android_app_id'], mobileapp.android_app_id)
         self.assertEqual(response.data['updated_by'], self.user.id)
         self.assertEqual(response.data['is_active'], mobileapp.is_active)
 
     def test_mobileapps_detail_patch(self):
         mobileapp = MobileApp.objects.create(
             name='ABC App',
-            identifier='ABC',
-            operating_system=self.test_mobileapp_operating_system,
             current_version=self.test_mobileapp_current_version,
+            ios_app_id=self.test_mobileapp_ios_app_id,
+            android_app_id=self.test_mobileapp_android_app_id,
             deployment_mechanism=self.test_mobileapp_deployment_mechanism,
-            updated_by=self.user
+            updated_by=self.user,
         )
 
         data = {
@@ -301,29 +300,30 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         response = self.do_patch(reverse('mobileapps-detail', kwargs={'pk': mobileapp.id}), data=data)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['name'], data['name'])
-        self.assertEqual(response.data['identifier'], mobileapp.identifier)
+        self.assertEqual(response.data['ios_app_id'], mobileapp.ios_app_id)
+        self.assertEqual(response.data['android_app_id'], mobileapp.android_app_id)
         self.assertEqual(response.data['updated_by'], self.user.id)
         self.assertEqual(response.data['is_active'], mobileapp.is_active)
 
     def test_mobileapps_detail_delete(self):
-        mobileapp = MobileApp.objects.create(
+       mobileapp = MobileApp.objects.create(
             name='ABC App',
-            identifier='ABC',
-            operating_system=self.test_mobileapp_operating_system,
             current_version=self.test_mobileapp_current_version,
+            ios_app_id=self.test_mobileapp_ios_app_id,
+            android_app_id=self.test_mobileapp_android_app_id,
             deployment_mechanism=self.test_mobileapp_deployment_mechanism,
-            updated_by=self.user
+            updated_by=self.user,
         )
 
-        response = self.do_delete(reverse('mobileapps-detail', kwargs={'pk': mobileapp.id}))
-        self.assertEqual(response.status_code, 405)
+       response = self.do_delete(reverse('mobileapps-detail', kwargs={'pk': mobileapp.id}))
+       self.assertEqual(response.status_code, 405)
 
     def test_mobileapps_inactive(self):
         mobileapp = MobileApp.objects.create(
             name='ABC App',
-            identifier='ABC',
-            operating_system=self.test_mobileapp_operating_system,
             current_version=self.test_mobileapp_current_version,
+            ios_app_id=self.test_mobileapp_ios_app_id,
+            android_app_id=self.test_mobileapp_android_app_id,
             deployment_mechanism=self.test_mobileapp_deployment_mechanism,
             updated_by=self.user,
         )
@@ -356,8 +356,8 @@ class MobileappsUserApiTests(ModuleStoreTestCase, APIClientMixin):
         super(MobileappsUserApiTests, self).setUp()
 
         self.test_mobileapp_name = str(uuid.uuid4())
-        self.test_mobileapp_identifier = str(uuid.uuid4())
-        self.test_mobileapp_operating_system = 1
+        self.test_mobileapp_ios_app_id = str(uuid.uuid4())
+        self.test_mobileapp_android_app_id = str(uuid.uuid4())
         self.test_mobileapp_deployment_mechanism = 1
         self.test_mobileapp_current_version = str(uuid.uuid4())
         self.users = UserFactory.create_batch(5)
@@ -384,8 +384,8 @@ class MobileappsUserApiTests(ModuleStoreTestCase, APIClientMixin):
 
         mobileapp = MobileApp.objects.create(
             name=mobileapp_data.get('name', self.test_mobileapp_name),
-            identifier=mobileapp_data.get('identifier', self.test_mobileapp_identifier),
-            operating_system=mobileapp_data.get('operating_system', self.test_mobileapp_operating_system),
+            ios_app_id=mobileapp_data.get('ios_app_id', self.test_mobileapp_ios_app_id),
+            android_app_id=mobileapp_data.get('android_app_id', self.test_mobileapp_android_app_id),
             current_version=mobileapp_data.get('current_version', self.test_mobileapp_current_version),
             deployment_mechanism=self.test_mobileapp_deployment_mechanism,
             updated_by=self.user,
@@ -399,11 +399,11 @@ class MobileappsUserApiTests(ModuleStoreTestCase, APIClientMixin):
         users = UserFactory.create_batch(5)
 
         mobileapp1 = self._setup_test_mobileapp(
-            mobileapp_data={"name": "ABC App", "identifier": "ABC"},
+            mobileapp_data={"name": "ABC App"},
             users=users[:2]
         )
         mobileapp2 = self._setup_test_mobileapp(
-            mobileapp_data={"name": "XYZ App", "identifier": "XYZ"},
+            mobileapp_data={"name": "XYZ App"},
             users=users[2:]
         )
 
@@ -471,8 +471,8 @@ class MobileappsOrganizationApiTests(ModuleStoreTestCase, APIClientMixin):
         super(MobileappsOrganizationApiTests, self).setUp()
 
         self.test_mobileapp_name = str(uuid.uuid4())
-        self.test_mobileapp_identifier = str(uuid.uuid4())
-        self.test_mobileapp_operating_system = 1
+        self.test_mobileapp_ios_app_id = str(uuid.uuid4())
+        self.test_mobileapp_android_app_id = str(uuid.uuid4())
         self.test_mobileapp_deployment_mechanism = 1
         self.test_mobileapp_current_version = str(uuid.uuid4())
         self.organizations = [
@@ -502,8 +502,8 @@ class MobileappsOrganizationApiTests(ModuleStoreTestCase, APIClientMixin):
 
         mobileapp = MobileApp.objects.create(
             name=mobileapp_data.get('name', self.test_mobileapp_name),
-            identifier=mobileapp_data.get('identifier', self.test_mobileapp_identifier),
-            operating_system=mobileapp_data.get('operating_system', self.test_mobileapp_operating_system),
+            ios_app_id=mobileapp_data.get('ios_app_id', self.test_mobileapp_ios_app_id),
+            android_app_id=mobileapp_data.get('android_app_id', self.test_mobileapp_android_app_id),
             current_version=mobileapp_data.get('current_version', self.test_mobileapp_current_version),
             deployment_mechanism=self.test_mobileapp_deployment_mechanism,
             updated_by=self.user,
@@ -518,11 +518,11 @@ class MobileappsOrganizationApiTests(ModuleStoreTestCase, APIClientMixin):
         organization2 = Organization.objects.create(name='LMN Organization')
 
         mobileapp1 = self._setup_test_mobileapp(
-            mobileapp_data={"name": "ABC App", "identifier": "ABC"},
+            mobileapp_data={"name": "ABC App"},
             organizations=[organization1]
         )
         mobileapp2 = self._setup_test_mobileapp(
-            mobileapp_data={"name": "XYZ App", "identifier": "XYZ"},
+            mobileapp_data={"name": "XYZ App"},
             organizations=[organization1, organization2]
         )
 
@@ -618,7 +618,7 @@ class MobileappsNotificationsTests(ModuleStoreTestCase, APIClientMixin):
         cls.user = UserFactory.create()
 
         app_data = {
-            'identifier': 'ABC identifier',
+            'name': 'ABC App',
             'notification_provider_id': notification_provider.id,
             'is_active': True
         }
@@ -626,7 +626,7 @@ class MobileappsNotificationsTests(ModuleStoreTestCase, APIClientMixin):
         cls.mobile_app1_id = mobile_app1.id
 
         app_data = {
-            'identifier': 'LMN identifier',
+            'name': 'LMN App',
             'notification_provider_id': None,
             'is_active': True
         }
@@ -634,7 +634,7 @@ class MobileappsNotificationsTests(ModuleStoreTestCase, APIClientMixin):
         cls.mobile_app2_id = mobile_app2.id
 
         app_data = {
-            'identifier': 'XYZ identifier',
+            'name': 'XYZ App',
             'notification_provider_id': None,
             'is_active': False
         }
@@ -643,7 +643,7 @@ class MobileappsNotificationsTests(ModuleStoreTestCase, APIClientMixin):
 
         users = UserFactory.create_batch(5)
         app_data = {
-            'identifier': 'WXY identifier',
+            'name': 'WXY App',
             'notification_provider_id': notification_provider.id,
             'is_active': True
         }
@@ -666,15 +666,15 @@ class MobileappsNotificationsTests(ModuleStoreTestCase, APIClientMixin):
         """
         create a mobile app and associate organizations and users
         :param
-            app_data: app data like identifier, notification_provider_id and is_active
+            app_data: app data like name, notification_provider_id and is_active
             users: List of users to add in mobile app
             organizations: List of organization ids to add in mobile app
         :return: newly created mobile
         """
 
         mobile_app = MobileApp.objects.create(name="Test App",
-                                              identifier=app_data['identifier'],
-                                              operating_system=1,
+                                              ios_app_id=str(uuid.uuid4()),
+                                              android_app_id=str(uuid.uuid4()),
                                               current_version=1,
                                               provider_key=StringCipher.encrypt('test key'),
                                               provider_secret=StringCipher.encrypt('test secret'),

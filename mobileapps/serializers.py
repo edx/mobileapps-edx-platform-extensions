@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from mobileapps.models import MobileApp, NotificationProvider, OS_CHOICES, DEPLOYMENT_CHOICES
+from mobileapps.models import MobileApp, NotificationProvider, DEPLOYMENT_CHOICES
 from edx_solutions_api_integration.utils import StringCipher
 
 
@@ -11,7 +11,6 @@ class NotificationProviderSerializer(serializers.ModelSerializer):
 class MobileAppSerializer(serializers.ModelSerializer):
     provider_key = serializers.CharField(source="provider_key_decrypted", required=False)
     provider_secret = serializers.CharField(source="provider_secret_decrypted", required=False)
-    operating_system = serializers.ChoiceField(choices=OS_CHOICES, required=False)
     deployment_mechanism = serializers.ChoiceField(choices=DEPLOYMENT_CHOICES, required=False)
 
     class Meta:
