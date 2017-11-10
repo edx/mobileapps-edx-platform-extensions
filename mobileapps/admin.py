@@ -9,6 +9,6 @@ admin.site.register(NotificationProvider, NotificationProviderAdmin)
 
 
 class MobileAppAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'identifier', 'created')
+    list_display = ('id', 'name', 'ios_app_id', 'android_app_id', 'created')
 
 admin.site.register(MobileApp, MobileAppAdmin)
