@@ -65,21 +65,18 @@ class MobileAppView(MobileListCreateAPIView):
 
         The body of the POST request must include the following parameters.
 
-        * identifier: Unique Identifier of the app.
+
         * name: Name of the app,
-        * operating_system: OS version
-            1: Android
-            2: iOS
-            3: Windows
-            4: Other
+        * ios_app_id: ios app ID
+        * android_app_id: Android app ID
+        * ios_download_url: IOS Download URL of the app.
+        * android_download_url: Android Download URL of the app.
         * deployment_mechanism: Deployment Mechanism
             1: Public app store
             2: Enterprise
             3: OTA
             4: Other
-        * download_url: Download URL of the app.
-        * analytics_url_dev: Analytics url for development environment
-        * analytics_url_prod: Analytics url for Production
+        * analytics_url: Analytics url
         * notification_provider: Notification provider selected for this app
         * provider_key: Provider key for this app
         * provider_secret: Provider secret
@@ -100,21 +97,17 @@ class MobileAppView(MobileListCreateAPIView):
         * id: ID of the mobile app.
         * created: Datetime it was created in.
         * modified: Datetime it was modified in.
-        * identifier: Unique Identifier of the app.
         * name: Name of the app,
-        * operating_system: OS version
-            1: Android
-            2: iOS
-            3: Windows
-            4: Other
+        * ios_app_id: ios app ID
+        * android_app_id: Android app ID
+        * ios_download_url: IOS Download URL of the app.
+        * android_download_url: Android Download URL of the app.
         * deployment_mechanism: Deployment Mechanism
             1: Public app store
             2: Enterprise
             3: OTA
             4: Other
-        * download_url: Download URL of the app.
-        * analytics_url_dev: Analytics url for development environment
-        * analytics_url_prod: Analytics url for Production
+        * analytics_url: Analytics url
         * notification_provider: Notification provider selected for this app
         * provider_key: Provider key for this app
         * provider_secret: Provider secret
@@ -132,21 +125,17 @@ class MobileAppView(MobileListCreateAPIView):
         * id: ID of the mobile app.
         * created: Datetime it was created in.
         * modified: Datetime it was modified in.
-        * identifier: Unique Identifier of the app.
         * name: Name of the app,
-        * operating_system: OS version
-            1: Android
-            2: iOS
-            3: Windows
-            4: Other
+        * ios_app_id: ios app ID
+        * android_app_id: Android app ID
+        * ios_download_url: IOS Download URL of the app.
+        * android_download_url: Android Download URL of the app.
         * deployment_mechanism: Deployment Mechanism
             1: Public app store
             2: Enterprise
             3: OTA
             4: Other
-        * download_url: Download URL of the app.
-        * analytics_url_dev: Analytics url for development environment
-        * analytics_url_prod: Analytics url for Production
+        * analytics_url: Analytics url
         * notification_provider: Notification provider selected for this app
         * provider_key: Provider key for this app
         * provider_secret: Provider secret
@@ -194,21 +183,17 @@ class MobileAppDetailView(MobileRetrieveUpdateAPIView):
 
         The body of the PUT request must include the following parameters.
 
-        * identifier: Unique Identifier of the app.
         * name: Name of the app,
-        * operating_system: OS version
-            1: Android
-            2: iOS
-            3: Windows
-            4: Other
+        * ios_app_id: ios app ID
+        * android_app_id: Android app ID
+        * ios_download_url: IOS Download URL of the app.
+        * android_download_url: Android Download URL of the app.
         * deployment_mechanism: Deployment Mechanism
             1: Public app store
             2: Enterprise
             3: OTA
             4: Other
-        * download_url: Download URL of the app.
-        * analytics_url_dev: Analytics url for development environment
-        * analytics_url_prod: Analytics url for Production
+        * analytics_url: Analytics url
         * notification_provider: Notification provider selected for this app
         * provider_key: Provider key for this app
         * provider_secret: Provider secret
@@ -229,21 +214,17 @@ class MobileAppDetailView(MobileRetrieveUpdateAPIView):
         * id: ID of the mobile app.
         * created: Datetime it was created in.
         * modified: Datetime it was modified in.
-        * identifier: Unique Identifier of the app.
         * name: Name of the app,
-        * operating_system: OS version
-            1: Android
-            2: iOS
-            3: Windows
-            4: Other
+        * ios_app_id: ios app ID
+        * android_app_id: Android app ID
+        * ios_download_url: IOS Download URL of the app.
+        * android_download_url: Android Download URL of the app.
         * deployment_mechanism: Deployment Mechanism
             1: Public app store
             2: Enterprise
             3: OTA
             4: Other
-        * download_url: Download URL of the app.
-        * analytics_url_dev: Analytics url for development environment
-        * analytics_url_prod: Analytics url for Production
+        * analytics_url: Analytics url
         * notification_provider: Notification provider selected for this app
         * provider_key: Provider key for this app
         * provider_secret: Provider secret
@@ -426,7 +407,7 @@ class MobileAppsNotifications(MobileAPIView):
             for mobile_app in mobile_apps:
                 notification_provider = mobile_app.get_notification_provider_name()
                 api_keys = mobile_app.get_api_keys()
-                notification_message = _create_notification_message(mobile_app.identifier, payload)
+                notification_message = _create_notification_message(mobile_app.id, payload)
 
                 # Send the notification_msg to the Celery task
                 publish_mobile_apps_notifications_task.delay([], notification_message, api_keys, notification_provider)
@@ -483,7 +464,7 @@ class MobileAppAllUsersNotifications(MobileAPIView):
                 'title': message,
                 'send_to_all': True
             }
-            notification_message = _create_notification_message(mobile_app.identifier, payload)
+            notification_message = _create_notification_message(mobile_app.id, payload)
 
             # Send the notification_msg to the Celery task
             publish_mobile_apps_notifications_task.delay([], notification_message, api_keys, notification_provider)
@@ -543,7 +524,7 @@ class MobileAppSelectedUsersNotifications(MobileAPIView):
         try:
             api_keys = mobile_app.get_api_keys()
             payload = {'title': message}
-            notification_message = _create_notification_message(mobile_app.identifier, payload)
+            notification_message = _create_notification_message(mobile_app.id, payload)
 
             # Send the notification_msg to the Celery task
             publish_mobile_apps_notifications_task.delay(user_ids, notification_message, api_keys,
@@ -606,7 +587,7 @@ class MobileAppOrganizationAllUsersNotifications(MobileAPIView):
         try:
             api_keys = mobile_app.get_api_keys()
             payload = {'title': message}
-            notification_message = _create_notification_message(mobile_app.identifier, payload)
+            notification_message = _create_notification_message(mobile_app.id, payload)
 
             # Send the notification_msg to the Celery task
             publish_mobile_apps_notifications_task.delay(user_ids, notification_message, api_keys,
@@ -618,10 +599,10 @@ class MobileAppOrganizationAllUsersNotifications(MobileAPIView):
         return Response({'message': _('Accepted')}, status.HTTP_202_ACCEPTED)
 
 
-def _create_notification_message(app_identifier, payload):
+def _create_notification_message(app_id, payload):
     notification_type = get_notification_type(u'open-edx.mobileapps.notifications')
     notification_message = NotificationMessage(
-        namespace=app_identifier,
+        namespace=app_id,
         msg_type=notification_type,
         payload=payload
     )
