@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='mobileapps-edx-platform-extensions',
-    version='1.0.5',
+    version='1.0.6',
     description='Mobile apps management extension for edX platform',
     long_description=open('README.md').read(),
     author='edX',
