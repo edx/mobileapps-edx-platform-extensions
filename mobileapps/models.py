@@ -18,12 +18,29 @@ DEPLOYMENT_CHOICES = (
 )
 
 
+class EncryptedCharField(models.CharField):
+    prefix = 'enc_str__'
+
+    def from_db_value(self, value, expression, connection, context):
+        if value and value.startswith(self.prefix):
+            value = StringCipher.decrypt(value[len(self.prefix):].encode())
+        return value
+
+    def get_db_prep_value(self, value, connection, prepared=False):
+        if value and not value.startswith(self.prefix):
+            value = self.prefix + StringCipher.encrypt(value)
+        return value
+
+
 class NotificationProvider(TimeStampedModel):
     """
     A django model to track notification providers.
     """
     name = models.CharField(max_length=255)
     api_url = models.CharField(max_length=255, null=True, blank=True)
+
+    def __unicode__(self):
+        return self.name
 
 
 class MobileApp(TimeStampedModel):
@@ -38,8 +55,8 @@ class MobileApp(TimeStampedModel):
     deployment_mechanism = models.PositiveSmallIntegerField(choices=DEPLOYMENT_CHOICES, default=1)
     analytics_url = models.CharField(max_length=255, null=True, blank=True)
     notification_provider = models.ForeignKey(NotificationProvider, related_name="mobile_apps", blank=True, null=True)
-    provider_key = models.CharField(max_length=255, null=True, blank=True)
-    provider_secret = models.CharField(max_length=255, null=True, blank=True)
+    provider_key = EncryptedCharField(max_length=255, null=True, blank=True)
+    provider_secret = EncryptedCharField(max_length=255, null=True, blank=True)
     provider_dashboard_url = models.CharField(max_length=255, null=True, blank=True)
     current_version = models.CharField(max_length=255)
     is_active = models.BooleanField(default=True)
@@ -48,23 +65,13 @@ class MobileApp(TimeStampedModel):
     organizations = models.ManyToManyField(Organization, related_name="mobile_apps", blank=True)
 
     @property
-    def provider_key_decrypted(self):
-        if self.provider_key:
-            return StringCipher.decrypt(self.provider_key.encode())
-
-    @property
-    def provider_secret_decrypted(self):
-        if self.provider_secret:
-            return StringCipher.decrypt(self.provider_secret.encode())
-
-    @property
     def deployment_mechanism_choice_text(self):
         return dict(DEPLOYMENT_CHOICES)[self.deployment_mechanism]
 
     def get_api_keys(self):
         return {
-            'provider_key': self.provider_key_decrypted,
-            'provider_secret': self.provider_secret_decrypted,
+            'provider_key': self.provider_key,
+            'provider_secret': self.provider_secret,
         }
 
     def get_notification_provider_name(self):
@@ -90,8 +97,8 @@ class MobileAppHistory(models.Model):
     deployment_mechanism = models.PositiveSmallIntegerField(choices=DEPLOYMENT_CHOICES)
     analytics_url = models.CharField(max_length=255, null=True, blank=True)
     notification_provider = models.ForeignKey(NotificationProvider, blank=True, null=True, on_delete=models.PROTECT)
-    provider_key = models.CharField(max_length=255, null=True, blank=True)
-    provider_secret = models.CharField(max_length=255, null=True, blank=True)
+    provider_key = EncryptedCharField(max_length=255, null=True, blank=True)
+    provider_secret = EncryptedCharField(max_length=255, null=True, blank=True)
     provider_dashboard_url = models.CharField(max_length=255, null=True, blank=True)
     current_version = models.CharField(max_length=255)
     is_active = models.BooleanField(default=True)
