@@ -16,7 +16,6 @@ from edx_solutions_api_integration.test_utils import (
     APIClientMixin,
 )
 from edx_solutions_organizations.models import Organization
-from edx_solutions_api_integration.utils import StringCipher
 from student.tests.factories import UserFactory
 from xmodule.modulestore.tests.django_utils import (
     ModuleStoreTestCase,
@@ -129,6 +128,8 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
             'current_version': mobileapp_data.get('current_version', self.test_mobileapp_current_version),
             'deployment_mechanism': mobileapp_data.get(
                 'deployment_mechanism', self.test_mobileapp_deployment_mechanism),
+            'provider_key': mobileapp_data.get('provider_key', 'test key'),
+            'provider_secret': mobileapp_data.get('provider_secret', 'test secret'),
             'users': mobileapp_data.get('users', []),
             'organizations': mobileapp_data.get('organizations', []),
         }
@@ -236,7 +237,9 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['count'], 0)
 
     def test_mobileapps_detail_get(self):
-        mobileapp_data = self.setup_test_mobileapp(mobileapp_data={"name": 'ABC App'})
+        mobileapp_data = self.setup_test_mobileapp(mobileapp_data={
+            "name": 'ABC App', "provider_key": "ABC key", "provider_secret": "ABC secret"
+        })
 
         response = self.do_get(reverse('mobileapps-detail', kwargs={'pk': mobileapp_data['id']}))
         self.assertEqual(response.status_code, 200)
@@ -250,8 +253,8 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertIn("android_download_url", response.data)
         self.assertIn("analytics_url", response.data)
         self.assertIn("notification_provider", response.data)
-        self.assertIn("provider_key", response.data)
-        self.assertIn("provider_secret", response.data)
+        self.assertEqual(response.data["provider_key"], "ABC key")
+        self.assertEqual(response.data["provider_secret"], "ABC secret")
         self.assertIn("provider_dashboard_url", response.data)
         self.assertIn("current_version", response.data)
         self.assertIsNotNone(response.data['created'])
@@ -676,8 +679,8 @@ class MobileappsNotificationsTests(ModuleStoreTestCase, APIClientMixin):
                                               ios_app_id=str(uuid.uuid4()),
                                               android_app_id=str(uuid.uuid4()),
                                               current_version=1,
-                                              provider_key=StringCipher.encrypt('test key'),
-                                              provider_secret=StringCipher.encrypt('test secret'),
+                                              provider_key='test key',
+                                              provider_secret='test secret',
                                               notification_provider_id=app_data['notification_provider_id'],
                                               is_active=app_data['is_active'],
                                               updated_by=cls.user)
