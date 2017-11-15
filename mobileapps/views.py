@@ -14,6 +14,7 @@ from edx_solutions_api_integration.permissions import (
     MobileRetrieveUpdateAPIView,
 )
 from edx_solutions_api_integration.users.serializers import SimpleUserSerializer
+from edx_solutions_api_integration.utils import get_ids_from_list_param
 from edx_solutions_organizations.models import Organization
 from edx_solutions_organizations.serializers import BasicOrganizationSerializer
 
@@ -157,12 +158,16 @@ class MobileAppView(MobileListCreateAPIView):
         queryset = MobileApp.objects.all()
         app_name = self.request.query_params.get('app_name', None)
         organization_name = self.request.query_params.get('organization_name', None)
+        organization_ids = get_ids_from_list_param(self.request, 'organization_ids')
 
         if app_name is not None:
             queryset = queryset.filter(name__icontains=app_name)
 
         if organization_name is not None:
             queryset = queryset.filter(organizations__name__icontains=organization_name)
+
+        if organization_ids is not None:
+            queryset = queryset.filter(organizations__in=organization_ids).distinct()
 
         return queryset
 

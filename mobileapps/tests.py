@@ -236,6 +236,43 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['count'], 0)
 
+    def test_mobileapps_list_search_by_organization_ids(self):
+        mobile_apps = []
+        organization1 = (Organization.objects.create(name='ABC Organization'))
+        organization2 = (Organization.objects.create(name='XYZ Organization'))
+
+        mobile_apps.append(self.setup_test_mobileapp(
+            mobileapp_data={
+                "name": 'ABC App', "organizations": [organization1.id, organization2.id]})
+        )
+
+        mobile_apps.append(self.setup_test_mobileapp(
+            mobileapp_data={
+                "name": 'XYZ App', "organizations": [organization2.id]})
+        )
+
+        response = self.do_get('{}?organization_ids={},{}'.format(
+            self.base_mobileapps_uri,
+            organization1.id,
+            organization2.id,
+        ))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 2)
+        self.assertEqual(response.data['results'][0]['organizations'], [organization1.id, organization2.id])
+        self.assertEqual(response.data['results'][1]['organizations'], [organization2.id])
+
+        response = self.do_get('{}?organization_ids={}'.format(self.base_mobileapps_uri, organization1.id))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['organizations'], [organization1.id, organization2.id])
+
+        response = self.do_get('{}?organization_ids=3'.format(self.base_mobileapps_uri))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 0)
+
     def test_mobileapps_detail_get(self):
         mobileapp_data = self.setup_test_mobileapp(mobileapp_data={
             "name": 'ABC App', "provider_key": "ABC key", "provider_secret": "ABC secret"
