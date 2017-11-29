@@ -5,15 +5,16 @@ Run these tests @ Devstack:
 paver test_system -s lms -t mobileapps
 """
 import uuid
-
+import datetime
 import ddt
+from pytz import UTC
 from mock import patch
 from django.core.cache import cache
 from django.core.urlresolvers import reverse
 from django.test.client import Client
 from edx_notifications import startup
 from edx_solutions_api_integration.test_utils import (
-    APIClientMixin,
+    APIClientMixin, get_temporary_image,
 )
 from edx_solutions_organizations.models import Organization
 from student.tests.factories import UserFactory
@@ -21,8 +22,10 @@ from xmodule.modulestore.tests.django_utils import (
     ModuleStoreTestCase,
     TEST_DATA_SPLIT_MODULESTORE
 )
+from mobileapps.models import MobileApp, NotificationProvider, Theme
 
-from mobileapps.models import MobileApp, NotificationProvider
+
+TEST_LOGO_IMAGE_UPLOAD_DT = datetime.datetime(2002, 1, 9, 15, 43, tzinfo=UTC)
 
 
 @ddt.ddt
@@ -859,3 +862,264 @@ class MobileappsNotificationsTests(ModuleStoreTestCase, APIClientMixin):
                                         kwargs={'mobile_app_id': self.mobile_app1_id,
                                                 'organization_id': self.organization1_id}), data=data)
         self.assertEqual(response.status_code, 400)
+
+
+@ddt.ddt
+class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
+    """ Test suite for Mobileapps Organization themes API views """
+
+    MODULESTORE = TEST_DATA_SPLIT_MODULESTORE
+
+    def setUp(self):
+        super(MobileappsThemeApiTests, self).setUp()
+
+        self.organization1 = Organization.objects.create(name='ABC Organization')
+        self.organization2 = Organization.objects.create(name='XYZ Organization')
+
+        self.user = UserFactory.create(username='test', email='test@edx.org', password='test_password')
+        self.client = Client()
+        self.client.login(username=self.user.username, password='test_password')
+
+        cache.clear()
+
+    def test_mobileapps_organization_theme(self):
+        response = self.do_get(reverse(
+            'mobileapps-organization-themes', kwargs={'organization_id': self.organization1.id}
+        ))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 0)
+        self.assertEqual(len(response.data['results']), 0)
+        self.assertEqual(response.data['num_pages'], 1)
+
+        organization_theme = Theme.objects.create(
+            name='Blue',
+            logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            active=False,
+            organization=self.organization1,
+        )
+
+        response = self.do_get(reverse(
+            'mobileapps-organization-themes', kwargs={'organization_id': self.organization1.id}
+        ))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 0)
+        self.assertEqual(len(response.data['results']), 0)
+        self.assertEqual(response.data['num_pages'], 1)
+
+        organization_theme.active = True
+        organization_theme.save(update_fields=['active'])
+
+        response = self.do_get(reverse(
+            'mobileapps-organization-themes', kwargs={'organization_id': self.organization1.id}
+        ))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['num_pages'], 1)
+
+        self.assertEqual(response.data['results'][0]['name'], 'Blue')
+        self.assertIn('logo_image_uploaded_at', response.data['results'][0])
+        self.assertEqual(response.data['results'][0]['organization'], self.organization1.id)
+        self.assertEqual(response.data['results'][0]['logo_image']['has_image'], True)
+
+        response = self.do_get(reverse(
+            'mobileapps-organization-themes', kwargs={'organization_id': self.organization2.id}
+        ))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 0)
+        self.assertEqual(len(response.data['results']), 0)
+        self.assertEqual(response.data['num_pages'], 1)
+
+    def test_mobileapps_organization_theme_add(self):
+        file_image = get_temporary_image()
+        data = {
+            'name': 'Test Theme',
+            'active': True,
+            'organization': self.organization2.id,
+            'logo_image': file_image,
+        }
+
+        response = self.do_post_multipart(reverse(
+            'mobileapps-organization-themes', kwargs={'organization_id': self.organization2.id}), data,
+        )
+
+        self.assertEqual(response.status_code, 201)
+
+        response = self.do_get(reverse(
+            'mobileapps-organization-themes', kwargs={'organization_id': self.organization2.id}
+        ))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['num_pages'], 1)
+
+        self.assertEqual(response.data['results'][0]['name'], 'Test Theme')
+        self.assertIn('logo_image_uploaded_at', response.data['results'][0])
+        self.assertEqual(response.data['results'][0]['organization'], self.organization2.id)
+
+        self.assertEqual(response.data['results'][0]['logo_image']['has_image'], True)
+        self.assertIn('image_url_full', response.data['results'][0]['logo_image'])
+        self.assertIn('image_url_large', response.data['results'][0]['logo_image'])
+        self.assertIn('image_url_medium', response.data['results'][0]['logo_image'])
+        self.assertIn('image_url_small', response.data['results'][0]['logo_image'])
+        self.assertIn('image_url_x-small', response.data['results'][0]['logo_image'])
+
+    def test_mobileapps_organization_theme_no_file(self):
+        data = {
+            'name': 'Test Theme',
+            'active': True,
+            'organization': self.organization2.id,
+        }
+
+        response = self.do_post_multipart(reverse(
+            'mobileapps-organization-themes', kwargs={'organization_id': self.organization2.id}), data,
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_mobileapps_organization_theme_add_and_inactive_previous(self):
+        organization_theme = Theme.objects.create(
+            name='Blue',
+            logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            active=True,
+            organization=self.organization1,
+        )
+
+        response = self.do_get(reverse(
+            'mobileapps-organization-themes', kwargs={'organization_id': self.organization1.id}
+        ))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['num_pages'], 1)
+
+        self.assertEqual(response.data['results'][0]['name'], 'Blue')
+        self.assertIn('logo_image_uploaded_at', response.data['results'][0])
+        self.assertEqual(response.data['results'][0]['organization'], self.organization1.id)
+        self.assertEqual(response.data['results'][0]['logo_image']['has_image'], True)
+
+        file_image = get_temporary_image()
+        data = {
+            'name': 'Green Theme',
+            'active': True,
+            'organization': self.organization1.id,
+            'logo_image': file_image,
+        }
+
+        response = self.do_post_multipart(reverse(
+            'mobileapps-organization-themes', kwargs={'organization_id': self.organization1.id}), data,
+        )
+
+        self.assertEqual(response.status_code, 201)
+
+        response = self.do_get(reverse(
+            'mobileapps-organization-themes', kwargs={'organization_id': self.organization1.id}
+        ))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['num_pages'], 1)
+
+        self.assertEqual(response.data['results'][0]['name'], 'Green Theme')
+        self.assertIn('logo_image_uploaded_at', response.data['results'][0])
+        self.assertEqual(response.data['results'][0]['organization'], self.organization1.id)
+        self.assertEqual(response.data['results'][0]['logo_image']['has_image'], True)
+
+        # only one theme should remain active now, and it should be the latest one added
+        theme = Theme.objects.get(organization_id=self.organization1.id, active=True)
+        self.assertEqual(theme.active, True)
+        self.assertEqual(theme.name, 'Green Theme')
+
+        # one created before should not be active now
+        theme = Theme.objects.get(id=organization_theme.id)
+        self.assertEqual(theme.active, None)
+        self.assertEqual(theme.name, 'Blue')
+
+    def test_mobileapps_organization_theme_detail(self):
+        organization_theme = Theme.objects.create(
+            name='Blue',
+            logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            active=True,
+            organization=self.organization1,
+        )
+
+        response = self.do_get(reverse(
+            'mobileapps-organization-themes-detail', kwargs={
+                'theme_id': organization_theme.id,
+            }
+        ))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['name'], 'Blue')
+        self.assertIn('logo_image_uploaded_at', response.data)
+        self.assertEqual(response.data['organization'], self.organization1.id)
+        self.assertEqual(response.data['logo_image']['has_image'], True)
+
+    def test_mobileapps_organization_theme_detail_update(self):
+        organization_theme = Theme.objects.create(
+            name='Blue',
+            logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            active=True,
+            organization=self.organization1,
+        )
+
+        data = {
+            'id': organization_theme.id,
+            'name': 'Blue Theme',
+            'active': True,
+            'organization': self.organization1.id,
+        }
+
+        response = self.do_patch(reverse(
+            'mobileapps-organization-themes-detail', kwargs={
+                'theme_id': organization_theme.id,
+            }
+        ), data)
+
+        self.assertEqual(response.status_code, 200)
+
+        response = self.do_get(reverse(
+            'mobileapps-organization-themes-detail', kwargs={
+                'theme_id': organization_theme.id,
+            }
+        ))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['name'], 'Blue Theme')
+        self.assertIn('logo_image_uploaded_at', response.data)
+        self.assertEqual(response.data['organization'], self.organization1.id)
+        self.assertEqual(response.data['logo_image']['has_image'], True)
+
+    def test_mobileapps_organization_theme_detail_delete(self):
+        organization_theme = Theme.objects.create(
+            name='Blue',
+            logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            active=True,
+            organization=self.organization1,
+        )
+        response = self.do_get(reverse(
+            'mobileapps-organization-themes-detail', kwargs={
+                'theme_id': organization_theme.id,
+            }
+        ))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['organization'], self.organization1.id)
+
+        response = self.do_delete(reverse(
+            'mobileapps-organization-themes-detail', kwargs={
+                'theme_id': organization_theme.id,
+            }
+        ))
+
+        self.assertEqual(response.status_code, 204)
+
+        response = self.do_get(reverse(
+            'mobileapps-organization-themes-detail', kwargs={
+                'theme_id': organization_theme.id,
+            }
+        ))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['active'], None)

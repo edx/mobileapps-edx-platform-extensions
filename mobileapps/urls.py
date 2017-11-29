@@ -18,4 +18,10 @@ urlpatterns = patterns(
     url(r'^(?P<mobile_app_id>[0-9]+)/organization/(?P<organization_id>[0-9]+)/notification$',
         mobile_views.MobileAppOrganizationAllUsersNotifications.as_view(),
         name='mobileapps-organization-all-users-notifications'),
+    url(r'^organization/(?P<organization_id>[0-9]+)/themes$',
+        mobile_views.OrganizationThemeView.as_view(),
+        name='mobileapps-organization-themes'),
+    url(r'^themes/(?P<theme_id>[0-9]+)$',
+        mobile_views.OrganizationThemeDetailView.as_view(),
+        name='mobileapps-organization-themes-detail'),
 )

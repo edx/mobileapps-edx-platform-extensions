@@ -1,5 +1,7 @@
 from rest_framework import serializers
-from mobileapps.models import MobileApp, NotificationProvider, DEPLOYMENT_CHOICES
+
+from mobileapps.image_helpers import get_logo_image_urls_by_organization_name
+from mobileapps.models import MobileApp, NotificationProvider, DEPLOYMENT_CHOICES, Theme
 
 
 class NotificationProviderSerializer(serializers.ModelSerializer):
@@ -27,3 +29,16 @@ class MobileAppSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         self._set_custom_validated_data(validated_data)
         return super(MobileAppSerializer, self).update(instance, validated_data)
+
+
+class ThemeSerializer(serializers.ModelSerializer):
+    logo_image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Theme
+
+    def get_logo_image(self, theme):
+        return get_logo_image_urls_by_organization_name(
+            "{}-{}".format(theme.organization.name, theme.id),
+            theme.logo_image_uploaded_at,
+        )

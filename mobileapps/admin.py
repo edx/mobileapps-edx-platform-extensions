@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from mobileapps.models import NotificationProvider, MobileApp
+from mobileapps.models import NotificationProvider, MobileApp, Theme
 
 
 class NotificationProviderAdmin(admin.ModelAdmin):
@@ -19,3 +19,9 @@ class MobileAppAdmin(admin.ModelAdmin):
 
 
 admin.site.register(MobileApp, MobileAppAdmin)
+
+
+class ThemeAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'logo_image_uploaded_at', 'organization', 'active')
+
+admin.site.register(Theme, ThemeAdmin)
