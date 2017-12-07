@@ -128,3 +128,25 @@ def user_post_save_callback(sender, **kwargs):
     mobile_app_history.is_active = mobile_app.is_active
     mobile_app_history.updated_by = mobile_app.updated_by
     mobile_app_history.save()
+
+
+class Theme(TimeStampedModel):
+    """
+    A django model to store theme for organizations.
+    """
+    name = models.CharField(max_length=255, null=True, blank=True)
+    logo_image_uploaded_at = models.DateTimeField(db_index=True, null=True, blank=True)
+    organization = models.ForeignKey(Organization, related_name="theme")
+    active = models.NullBooleanField(default=None)
+
+    class Meta:
+        unique_together = (('organization', 'active'), )
+
+    @staticmethod
+    def mark_existing_as_inactive(organization_id):
+        try:
+            theme = Theme.objects.get(organization_id=organization_id, active=True)
+            theme.active = None
+            theme.save(update_fields=['active'])
+        except Theme.DoesNotExist:
+            pass

@@ -1,7 +1,12 @@
+import datetime
+
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import Http404
 from django.utils.translation import ugettext_lazy as _
+from django.utils.timezone import utc
+from django.db import transaction
+from contextlib import closing
 from rest_framework import status
 from rest_framework.response import Response
 
@@ -12,15 +17,44 @@ from edx_solutions_api_integration.permissions import (
     MobileListAPIView,
     MobileListCreateAPIView,
     MobileRetrieveUpdateAPIView,
+    MobileRetrieveUpdateDestroyAPIView,
 )
 from edx_solutions_api_integration.users.serializers import SimpleUserSerializer
 from edx_solutions_api_integration.utils import get_ids_from_list_param
 from edx_solutions_organizations.models import Organization
 from edx_solutions_organizations.serializers import BasicOrganizationSerializer
+from image_helpers import get_logo_image_names, set_has_logo_image, create_logo_images
+from openedx.core.djangoapps.profile_images.exceptions import ImageValidationError
+from openedx.core.djangoapps.profile_images.images import IMAGE_TYPES, validate_uploaded_image
 
-from mobileapps.models import MobileApp, NotificationProvider
-from mobileapps.serializers import MobileAppSerializer, NotificationProviderSerializer
+
+from mobileapps.models import MobileApp, NotificationProvider, Theme
+from mobileapps.serializers import MobileAppSerializer, NotificationProviderSerializer, ThemeSerializer
 from mobileapps.tasks import publish_mobile_apps_notifications_task
+
+
+def _save_logo(request, organization, theme):
+    # validate request:
+    # verify that the user's
+    # ensure any file was sent
+    if 'logo_image' not in request.FILES:
+        return False, {"message": u"No logo_image provided for logo image"}
+
+    uploaded_file = request.FILES['logo_image']
+
+    # no matter what happens, delete the temporary file when we're done
+    with closing(uploaded_file):
+        try:
+            validate_uploaded_image(uploaded_file)
+        except ImageValidationError as error:
+            return False, {"message": error.message}
+
+        logo_image_names = get_logo_image_names("{}-{}".format(organization.name, theme.id))
+        create_logo_images(uploaded_file, logo_image_names)
+
+        # update the theme to reflect that a logo image is available against this theme.
+        set_has_logo_image(theme, True, _make_upload_dt())
+        return True, None
 
 
 class NotificationProviderView(MobileListAPIView):
@@ -612,3 +646,224 @@ def _create_notification_message(app_id, payload):
         payload=payload
     )
     return notification_message
+
+
+def _make_upload_dt():
+        """
+        Generate a server-side timestamp for the upload. This is in a separate
+        function so its behavior can be overridden in tests.
+        """
+        return datetime.datetime.utcnow().replace(tzinfo=utc)
+
+
+class OrganizationThemeView(MobileListCreateAPIView):
+    """
+    **Use Case**
+
+        Get list of themes for organization and create a new theme.
+
+    **Example Requests**
+
+        GET /api/server/mobileapps/organization/{id}/themes
+        POST /api/server/mobileapps/organization/{id}/themes
+
+        **POST Parameters**
+
+        The body of the POST request must include the following parameters.
+
+        * logo_image: Image file to be updated as a logo of the theme
+        * name: Name of the theme (Optional)
+        * active: theme is active or not (Optional)
+
+    **Response Values**
+
+        **GET**
+
+        If the request is successful, the request returns an HTTP 200 "OK" response.
+
+        The HTTP 200 response has a paginated list of objects with the following values.
+
+        * id: ID of the mobile app.
+        * created: Datetime it was created in.
+        * modified: Datetime it was modified in.
+        * logo_image:
+            - has_image
+            - image_url_full
+            - image_url_large
+            - image_url_small
+            - image_url_xsmall
+            - image_url_medium
+        * name: Name of the theme (Optional)
+        * active: theme is active or not (Optional)
+        * organization_id: organization id to which theme is related
+
+        **POST**
+
+        If the request is successful, the request returns an HTTP 201 response.
+
+        * id: ID of the mobile app.
+        * created: Datetime it was created in.
+        * modified: Datetime it was modified in.
+        * logo_image:
+            - has_image
+            - image_url_full
+            - image_url_large
+            - image_url_small
+            - image_url_xsmall
+            - image_url_medium
+        * name: Name of the theme (Optional)
+        * active: theme is active or not (Optional)
+        * organization_id: organization id to which theme is related
+    """
+
+    serializer_class = ThemeSerializer
+
+
+    def get_queryset(self):
+        """
+        Optionally restricts the returned themes to active only.
+        """
+        return Theme.objects.filter(active=True, organization_id=self.kwargs['organization_id'])
+
+    @transaction.atomic
+    def post(self, request, organization_id):
+        """
+        POST method inactive the existing active theme and creates and new active one.
+        """
+        data = request.data.copy()
+        data["organization_id"] = organization_id
+
+        if 'logo_image' not in request.FILES:
+            return Response({"message": u"No logo_image provided for logo image"}, status=status.HTTP_400_BAD_REQUEST)
+
+        Theme.mark_existing_as_inactive(organization_id)
+        theme_serializer = ThemeSerializer(data=data)
+        if theme_serializer.is_valid(raise_exception=True):
+            theme = theme_serializer.save()
+
+            organization = Organization.objects.get(pk=organization_id)
+            is_logo_saved, response_dict = _save_logo(request, organization, theme)
+            if is_logo_saved:
+                return Response(status=status.HTTP_201_CREATED)
+            return Response({"message": response_dict}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class OrganizationThemeDetailView(MobileRetrieveUpdateDestroyAPIView):
+    """
+    **Use Case**
+
+        Get theme for organization, update or destroy the existing theme.
+
+    **Example Requests**
+
+        GET /api/server/mobileapps/themes/{id}
+        PATCH /api/server/mobileapps/themes/{id}
+        PUT /api/server/mobileapps/themes/{id}
+        DELETE /api/server/mobileapps//themes/{id}
+
+        **PATCH Parameters**
+
+        The body of the POST request must include the following parameters.
+
+        * logo_image: Image file to be updated as a logo of the theme (Optional)
+        * name: Name of the theme (Optional)
+        * active: theme is active or not (Optional)
+
+    **Response Values**
+
+        **GET**
+
+        If the request is successful, the request returns an HTTP 200 "OK" response.
+
+        The HTTP 200 response has an object with the following values.
+
+        * id: ID of the mobile app.
+        * created: Datetime it was created in.
+        * modified: Datetime it was modified in.
+        * logo_image:
+            - has_image
+            - image_url_full
+            - image_url_large
+            - image_url_small
+            - image_url_xsmall
+            - image_url_medium
+        * name: Name of the theme (Optional)
+        * active: theme is active or not (Optional)
+        * organization_id: organization id to which theme is related
+
+        **PATCH**
+
+        If the request is successful, the request returns an HTTP 200 response.
+
+        * id: ID of the mobile app.
+        * created: Datetime it was created in.
+        * modified: Datetime it was modified in.
+        * logo_image:
+            - has_image
+            - image_url_full
+            - image_url_large
+            - image_url_small
+            - image_url_xsmall
+            - image_url_medium
+        * name: Name of the theme (Optional)
+        * active: theme is active or not (Optional)
+        * organization_id: organization id to which theme is related
+
+        **PUT**
+
+        If the request is successful, the request returns an HTTP 200 response.
+
+        * id: ID of the mobile app.
+        * created: Datetime it was created in.
+        * modified: Datetime it was modified in.
+        * logo_image:
+            - has_image
+            - image_url_full
+            - image_url_large
+            - image_url_small
+            - image_url_xsmall
+            - image_url_medium
+        * name: Name of the theme (Optional)
+        * active: theme is active or not (Optional)
+        * organization_id: organization id to which theme is related
+    """
+
+    serializer_class = ThemeSerializer
+    queryset = Theme.objects.all()
+    lookup_url_kwarg = 'theme_id'
+
+    @transaction.atomic
+    def patch(self, request, theme_id):
+        theme = Theme.objects.get(pk=theme_id)
+        theme_serializer = ThemeSerializer(theme, data=request.data)
+        if theme_serializer.is_valid(raise_exception=True):
+            theme = theme_serializer.save()
+
+        if 'logo_image' in request.FILES and 'organization' in request.data:
+            organization = Organization.objects.get(pk=request.data['organization'])
+            is_logo_saved, response_dict = _save_logo(request, organization, theme)
+            if is_logo_saved:
+                return Response(status=status.HTTP_200_OK)
+            return Response({"message": response_dict}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(status=status.HTTP_200_OK)
+
+    @transaction.atomic
+    def put(self, request, theme_id):
+        if 'logo_image' in request.FILES:
+            theme = Theme.objects.get(pk=theme_id)
+            theme_serializer = ThemeSerializer(theme, data=request.data)
+            if theme_serializer.is_valid(raise_exception=True):
+                theme = theme_serializer.save()
+
+                organization = Organization.objects.get(pk=request.data['organization'])
+                is_logo_saved, response_dict = _save_logo(request, organization, theme)
+                if is_logo_saved:
+                    return Response(status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, theme_id):
+        Theme.objects.filter(pk=theme_id).update(active=None)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
