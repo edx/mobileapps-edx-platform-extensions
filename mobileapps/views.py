@@ -731,7 +731,7 @@ class OrganizationThemeView(MobileListCreateAPIView):
         POST method inactive the existing active theme and creates and new active one.
         """
         data = request.data.copy()
-        data["organization_id"] = organization_id
+        data["organization"] = organization_id
 
         if 'logo_image' not in request.FILES:
             return Response({"message": u"No logo_image provided for logo image"}, status=status.HTTP_400_BAD_REQUEST)
