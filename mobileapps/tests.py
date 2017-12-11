@@ -935,7 +935,6 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         data = {
             'name': 'Test Theme',
             'active': True,
-            'organization': self.organization2.id,
             'logo_image': file_image,
         }
 
@@ -969,7 +968,6 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         data = {
             'name': 'Test Theme',
             'active': True,
-            'organization': self.organization2.id,
         }
 
         response = self.do_post_multipart(reverse(
@@ -1003,7 +1001,6 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         data = {
             'name': 'Green Theme',
             'active': True,
-            'organization': self.organization1.id,
             'logo_image': file_image,
         }
 
