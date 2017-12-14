@@ -876,7 +876,7 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         self.organization1 = Organization.objects.create(name='ABC Organization')
         self.organization2 = Organization.objects.create(name='XYZ Organization')
 
-        self.user = UserFactory.create(username='test', email='test@edx.org', password='test_password')
+        self.user = UserFactory.create(username='test', email='test@edx.org', password='test_password', is_staff=True)
         self.client = Client()
         self.client.login(username=self.user.username, password='test_password')
 
@@ -963,6 +963,32 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertIn('image_url_medium', response.data['results'][0]['logo_image'])
         self.assertIn('image_url_small', response.data['results'][0]['logo_image'])
         self.assertIn('image_url_x-small', response.data['results'][0]['logo_image'])
+
+    def test_mobileapps_organization_theme_add_with_non_staff_user(self):
+        self.user = UserFactory.create(username='test_non_staff', email='test@edx.org', password='test_password')
+        self.client = Client()
+        self.client.login(username=self.user.username, password='test_password')
+
+        file_image = get_temporary_image()
+        data = {
+            'name': 'Test Theme',
+            'active': True,
+            'logo_image': file_image,
+        }
+
+        response = self.do_post_multipart(reverse(
+            'mobileapps-organization-themes', kwargs={'organization_id': self.organization2.id}), data,
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+        response = self.do_get(reverse(
+            'mobileapps-organization-themes', kwargs={'organization_id': self.organization2.id}
+        ))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 0)
+        self.assertEqual(len(response.data['results']), 0)
 
     def test_mobileapps_organization_theme_no_file(self):
         data = {
@@ -1088,6 +1114,45 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['organization'], self.organization1.id)
         self.assertEqual(response.data['logo_image']['has_image'], True)
 
+    def test_mobileapps_organization_theme_detail_update_with_non_staff_user(self):
+        self.user = UserFactory.create(username='test_non_staff', email='test@edx.org', password='test_password')
+        self.client = Client()
+        self.client.login(username=self.user.username, password='test_password')
+
+        organization_theme = Theme.objects.create(
+            name='Blue',
+            logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            active=True,
+            organization=self.organization1,
+        )
+
+        data = {
+            'id': organization_theme.id,
+            'name': 'Blue Theme',
+            'active': True,
+            'organization': self.organization1.id,
+        }
+
+        response = self.do_patch(reverse(
+            'mobileapps-organization-themes-detail', kwargs={
+                'theme_id': organization_theme.id,
+            }
+        ), data)
+
+        self.assertEqual(response.status_code, 403)
+
+        response = self.do_get(reverse(
+            'mobileapps-organization-themes-detail', kwargs={
+                'theme_id': organization_theme.id,
+            }
+        ))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['name'], 'Blue')
+        self.assertIn('logo_image_uploaded_at', response.data)
+        self.assertEqual(response.data['organization'], self.organization1.id)
+        self.assertEqual(response.data['logo_image']['has_image'], True)
+
     def test_mobileapps_organization_theme_detail_delete(self):
         organization_theme = Theme.objects.create(
             name='Blue',
@@ -1120,3 +1185,31 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['active'], None)
+
+    def test_mobileapps_organization_theme_detail_delete_with_non_staff_user(self):
+        self.user = UserFactory.create(username='test_non_staff', email='test@edx.org', password='test_password')
+        self.client = Client()
+        self.client.login(username=self.user.username, password='test_password')
+
+        organization_theme = Theme.objects.create(
+            name='Blue',
+            logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            active=True,
+            organization=self.organization1,
+        )
+        response = self.do_get(reverse(
+            'mobileapps-organization-themes-detail', kwargs={
+                'theme_id': organization_theme.id,
+            }
+        ))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['organization'], self.organization1.id)
+
+        response = self.do_delete(reverse(
+            'mobileapps-organization-themes-detail', kwargs={
+                'theme_id': organization_theme.id,
+            }
+        ))
+
+        self.assertEqual(response.status_code, 403)
