@@ -19,6 +19,7 @@ from edx_solutions_api_integration.permissions import (
     MobileRetrieveUpdateAPIView,
     MobileRetrieveUpdateDestroyAPIView,
 )
+from edx_solutions_api_integration.permissions import IsStaffOrReadOnlyView
 from edx_solutions_api_integration.users.serializers import SimpleUserSerializer
 from edx_solutions_api_integration.utils import get_ids_from_list_param
 from edx_solutions_organizations.models import Organization
@@ -718,6 +719,8 @@ class OrganizationThemeView(MobileListCreateAPIView):
 
     serializer_class = ThemeSerializer
 
+    def __init__(self):
+        self.permission_classes += (IsStaffOrReadOnlyView,)
 
     def get_queryset(self):
         """
@@ -831,6 +834,9 @@ class OrganizationThemeDetailView(MobileRetrieveUpdateDestroyAPIView):
     serializer_class = ThemeSerializer
     queryset = Theme.objects.all()
     lookup_url_kwarg = 'theme_id'
+
+    def __init__(self):
+        self.permission_classes += (IsStaffOrReadOnlyView,)
 
     @transaction.atomic
     def patch(self, request, theme_id):
