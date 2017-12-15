@@ -166,7 +166,6 @@ def get_logo_image_urls_by_organization_name(key, logo_image_uploaded_at):
             get_logo_image_storage(),
             version=logo_image_uploaded_at.strftime("%s"),
         )
-        urls = {size_display_name: prefix_with_lms_base(url) for size_display_name, url in urls.items()}
     else:
         urls = _get_default_logo_image_urls()
         urls = {size_display_name: prefix_with_lms_base(url) for size_display_name, url in urls.items()}
