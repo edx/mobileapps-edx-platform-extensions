@@ -110,11 +110,16 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.test_mobileapp_deployment_mechanism = 1
         self.test_mobileapp_current_version = str(uuid.uuid4())
 
-        self.user = UserFactory.create(username='test', email='test@edx.org', password='test_password')
+        self.user = UserFactory.create(username='test', email='test@edx.org', password='test_password', is_staff=True)
+        self.non_staff_user = UserFactory.create(username='non_staff', email='demo@edx.org', password='test_password')
         self.client = Client()
         self.client.login(username=self.user.username, password='test_password')
 
         cache.clear()
+
+    def login_with_non_staff_user(self):
+        self.client.logout()
+        self.client.login(username=self.non_staff_user.username, password='test_password')
 
     def setup_test_mobileapp(self, mobileapp_data=None):
         """
@@ -179,6 +184,31 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         response = self.do_get('{}?page_size=0'.format(self.base_mobileapps_uri))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), len(mobile_apps))
+
+    def test_mobileapps_list_by_non_staff(self):
+        """
+        Tests mobile apps list view with non staff user
+        """
+        organizations = list([
+            Organization.objects.create(name='ABC Organization'),
+            Organization.objects.create(name='XYZ Organization')
+        ])
+        for org in organizations:
+            data = {
+                'name': 'Test Mobile App for {}'.format(org.name),
+                'organizations': [org.id],
+            }
+            self.setup_test_mobileapp(mobileapp_data=data)
+
+        response = self.do_get(self.base_mobileapps_uri)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 2)
+
+        organizations[0].users.add(self.non_staff_user)
+        self.login_with_non_staff_user()
+        response = self.do_get(self.base_mobileapps_uri)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 1)
 
     def test_mobileapps_list_search_by_app_name(self):
         mobile_apps = []
@@ -276,6 +306,21 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['count'], 0)
 
+    def test_mobileapp_post_with_non_staff_user(self):
+        """
+        Tests post request on mobilieapps should fail due to staff only permissions
+        """
+        self.login_with_non_staff_user()
+        data = {
+            'name': self.test_mobileapp_name,
+            'android_app_id': self.test_mobileapp_android_app_id,
+            'ios_app_id': self.test_mobileapp_ios_app_id,
+            'current_version': self.test_mobileapp_current_version,
+            'deployment_mechanism': self.test_mobileapp_deployment_mechanism,
+        }
+        response = self.do_post(self.base_mobileapps_uri, data)
+        self.assertEqual(response.status_code, 403)
+
     def test_mobileapps_detail_get(self):
         mobileapp_data = self.setup_test_mobileapp(mobileapp_data={
             "name": 'ABC App', "provider_key": "ABC key", "provider_secret": "ABC secret"
@@ -348,8 +393,38 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['updated_by'], self.user.id)
         self.assertEqual(response.data['is_active'], mobileapp.is_active)
 
+    def test_mobileapp_put_patch_delete_with_non_staff_user(self):
+        """
+        Tests put/patch requests on mobilieapps detail view should fail due to staff only permissions
+        """
+        mobileapp = self.setup_test_mobileapp()
+        self.login_with_non_staff_user()
+        data = {
+            'name': self.test_mobileapp_name,
+            'android_app_id': self.test_mobileapp_android_app_id,
+            'ios_app_id': self.test_mobileapp_ios_app_id,
+            'current_version': self.test_mobileapp_current_version,
+            'deployment_mechanism': self.test_mobileapp_deployment_mechanism,
+        }
+        response = self.do_put(reverse('mobileapps-detail', kwargs={'pk': mobileapp['id']}), data=data)
+        self.assertEqual(response.status_code, 403)
+        response = self.do_patch(reverse('mobileapps-detail', kwargs={'pk': mobileapp['id']}), data=data)
+        self.assertEqual(response.status_code, 403)
+        response = self.do_delete(reverse('mobileapps-detail', kwargs={'pk': mobileapp['id']}))
+        self.assertEqual(response.status_code, 403)
+
+    def test_mobileapp_get_with_non_staff_user(self):
+        """
+        Tests get requests on mobile apps detail view with non staff user
+        when non staff user does not belong to the app organization
+        """
+        mobileapp = self.setup_test_mobileapp()
+        self.login_with_non_staff_user()
+        response = self.do_get(reverse('mobileapps-detail', kwargs={'pk': mobileapp['id']}))
+        self.assertEqual(response.status_code, 404)
+
     def test_mobileapps_detail_delete(self):
-       mobileapp = MobileApp.objects.create(
+        mobileapp = MobileApp.objects.create(
             name='ABC App',
             current_version=self.test_mobileapp_current_version,
             ios_app_id=self.test_mobileapp_ios_app_id,
@@ -358,8 +433,8 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
             updated_by=self.user,
         )
 
-       response = self.do_delete(reverse('mobileapps-detail', kwargs={'pk': mobileapp.id}))
-       self.assertEqual(response.status_code, 405)
+        response = self.do_delete(reverse('mobileapps-detail', kwargs={'pk': mobileapp.id}))
+        self.assertEqual(response.status_code, 405)
 
     def test_mobileapps_inactive(self):
         mobileapp = MobileApp.objects.create(
@@ -407,11 +482,16 @@ class MobileappsUserApiTests(ModuleStoreTestCase, APIClientMixin):
 
         self.mobileapp = self._setup_test_mobileapp()
 
-        self.user = UserFactory.create(username='test', email='test@edx.org', password='test_password')
+        self.user = UserFactory.create(username='test', email='test@edx.org', password='test_password', is_staff=True)
+        self.non_staff_user = UserFactory.create(username='non_staff', email='demo@edx.org', password='test_password')
         self.client = Client()
         self.client.login(username=self.user.username, password='test_password')
 
         cache.clear()
+
+    def login_with_non_staff_user(self):
+        self.client.logout()
+        self.client.login(username=self.non_staff_user.username, password='test_password')
 
     def _setup_test_mobileapp(self, mobileapp_data=None, users=None):
         """
@@ -503,6 +583,52 @@ class MobileappsUserApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(len(response.data['results']), 2)
         self.assertEqual(response.data['num_pages'], 1)
 
+    def test_mobileapp_users_post_delete_with_non_staff_user(self):
+        """
+        Tests post/delete requests on mobilieapps users view should fail due to staff only permissions
+        """
+        self.login_with_non_staff_user()
+        data = {
+            "users": [user.id for user in UserFactory.create_batch(3)]
+        }
+
+        response = self.do_post(reverse('mobileapps-users', kwargs={'mobile_app_id': self.mobileapp.id}), data=data)
+        self.assertEqual(response.status_code, 403)
+        data = {
+            "users": [user.id for user in self.users[2:]]
+        }
+
+        response = self.do_delete(reverse('mobileapps-users', kwargs={'mobile_app_id': self.mobileapp.id}), data=data)
+        self.assertEqual(response.status_code, 403)
+
+    def test_mobileapp_users_get_non_staff(self):
+        """
+        Tests mobile app users get for non staff user
+        """
+        users = UserFactory.create_batch(5)
+
+        mobileapp1 = self._setup_test_mobileapp(
+            mobileapp_data={"name": "ABC App"},
+            users=users[:2]
+        )
+        mobileapp2 = self._setup_test_mobileapp(
+            mobileapp_data={"name": "XYZ App"},
+            users=users[2:]
+        )
+        organization = Organization.objects.create(name='XYZ Organization')
+        organization.users.add(self.non_staff_user)
+        for user in users[:2]:
+            organization.users.add(user)
+        mobileapp1.organizations.add(organization)
+        self.login_with_non_staff_user()
+        response = self.do_get(reverse('mobileapps-users', kwargs={'mobile_app_id': mobileapp1.id}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 2)
+
+        response = self.do_get(reverse('mobileapps-users', kwargs={'mobile_app_id': mobileapp2.id}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 0)
+
 
 @ddt.ddt
 class MobileappsOrganizationApiTests(ModuleStoreTestCase, APIClientMixin):
@@ -525,11 +651,16 @@ class MobileappsOrganizationApiTests(ModuleStoreTestCase, APIClientMixin):
 
         self.mobileapp = self._setup_test_mobileapp()
 
-        self.user = UserFactory.create(username='test', email='test@edx.org', password='test_password')
+        self.user = UserFactory.create(username='test', email='test@edx.org', password='test_password', is_staff=True)
+        self.non_staff_user = UserFactory.create(username='non_staff', email='demo@edx.org', password='test_password')
         self.client = Client()
         self.client.login(username=self.user.username, password='test_password')
 
         cache.clear()
+
+    def login_with_non_staff_user(self):
+        self.client.logout()
+        self.client.login(username=self.non_staff_user.username, password='test_password')
 
     def _setup_test_mobileapp(self, mobileapp_data=None, organizations=None):
         """
@@ -635,6 +766,55 @@ class MobileappsOrganizationApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['num_pages'], 1)
         self.assertEqual(response.data['results'][0]['name'], self.organizations[1].name)
 
+    def test_mobileapp_organizations_post_delete_with_non_staff_user(self):
+        """
+        Tests post/delete requests on mobilieapps organizations view should fail due to staff only permissions
+        """
+        self.login_with_non_staff_user()
+        organization = Organization.objects.create(name='Test Organization')
+        data = {
+            "organizations": [organization.id]
+        }
+
+        response = self.do_post(
+            reverse('mobileapps-organizations', kwargs={'mobile_app_id': self.mobileapp.id}),
+            data=data
+        )
+        self.assertEqual(response.status_code, 403)
+        data = {
+            "organizations": [self.organizations[0].id]
+        }
+        response = self.do_delete(
+            reverse('mobileapps-organizations', kwargs={'mobile_app_id': self.mobileapp.id}),
+            data=data
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_mobileapps_organizations_get_with_non_staff_user(self):
+        """
+        Tests get request on mobile apps organizations with non staff user
+        """
+        organization1 = Organization.objects.create(name='EFG Organization')
+        organization2 = Organization.objects.create(name='LMN Organization')
+
+        mobileapp1 = self._setup_test_mobileapp(
+            mobileapp_data={"name": "ABC App"},
+            organizations=[organization1]
+        )
+        mobileapp2 = self._setup_test_mobileapp(
+            mobileapp_data={"name": "XYZ App"},
+            organizations=[organization2]
+        )
+        organization1.users.add(self.non_staff_user)
+        self.login_with_non_staff_user()
+        response = self.do_get(reverse('mobileapps-organizations', kwargs={'mobile_app_id': mobileapp1.id}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 1)
+
+        response = self.do_get(reverse('mobileapps-organizations', kwargs={'mobile_app_id': mobileapp2.id}))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 0)
+
 
 @ddt.ddt
 class MobileappsNotificationsTests(ModuleStoreTestCase, APIClientMixin):
@@ -698,11 +878,16 @@ class MobileappsNotificationsTests(ModuleStoreTestCase, APIClientMixin):
     def setUp(self):
         super(MobileappsNotificationsTests, self).setUp()
 
-        self.user = UserFactory.create(username='test', email='test@edx.org', password='test_password')
+        self.non_staff_user = UserFactory.create(username='non_staff', email='demo@edx.org', password='test_password')
+        self.user = UserFactory.create(username='test', email='test@edx.org', password='test_password', is_staff=True)
         self.client = Client()
         self.client.login(username=self.user.username, password='test_password')
 
         cache.clear()
+
+    def login_with_non_staff_user(self):
+        self.client.logout()
+        self.client.login(username=self.non_staff_user.username, password='test_password')
 
     @classmethod
     def _setup_test_mobileapp(cls, app_data, users=[], organizations=[]):
@@ -863,6 +1048,35 @@ class MobileappsNotificationsTests(ModuleStoreTestCase, APIClientMixin):
                                                 'organization_id': self.organization1_id}), data=data)
         self.assertEqual(response.status_code, 400)
 
+    def test_mobileapp_notifications_post_with_non_staff_user(self):
+        """
+        Tests post requests on all mobilieapps notification views by non staff users
+        should fail due to staff only permissions
+        """
+        self.login_with_non_staff_user()
+        data = {'message': 'Test message for push notification'}
+        response = self.do_post(reverse('mobileapps-notifications'), data=data)
+        self.assertEqual(response.status_code, 403)
+
+        response = self.do_post(
+            reverse('mobileapps-all-users-notifications', kwargs={'mobile_app_id': self.mobile_app1_id}),
+            data=data
+        )
+        self.assertEqual(response.status_code, 403)
+
+        response = self.do_post(
+            reverse('mobileapps-selected-users-notifications', kwargs={'mobile_app_id': self.mobile_app1_id}),
+            data=data
+        )
+        self.assertEqual(response.status_code, 403)
+        response = self.do_post(
+            reverse(
+                'mobileapps-organization-all-users-notifications',
+                kwargs={'mobile_app_id': self.mobile_app1_id, 'organization_id': self.organization1_id}
+            ), data=data
+        )
+        self.assertEqual(response.status_code, 403)
+
 
 @ddt.ddt
 class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
@@ -877,10 +1091,15 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         self.organization2 = Organization.objects.create(name='XYZ Organization')
 
         self.user = UserFactory.create(username='test', email='test@edx.org', password='test_password', is_staff=True)
+        self.non_staff_user = UserFactory.create(username='non_staff', email='demo@edx.org', password='test_password')
         self.client = Client()
         self.client.login(username=self.user.username, password='test_password')
 
         cache.clear()
+
+    def login_with_non_staff_user(self):
+        self.client.logout()
+        self.client.login(username=self.non_staff_user.username, password='test_password')
 
     def test_mobileapps_organization_theme(self):
         response = self.do_get(reverse(
@@ -929,6 +1148,37 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['count'], 0)
         self.assertEqual(len(response.data['results']), 0)
         self.assertEqual(response.data['num_pages'], 1)
+
+    def test_mobileapps_organization_theme_non_staff_user(self):
+        """
+        Tests get request on theme list view should only return theme of the organization user belongs to
+        """
+        self.organization1.users.add(self.non_staff_user)
+
+        Theme.objects.create(
+            name='Theme for org1',
+            logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            active=True,
+            organization=self.organization1,
+        )
+        Theme.objects.create(
+            name='Theme for org2',
+            logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            active=True,
+            organization=self.organization2,
+        )
+        self.login_with_non_staff_user()
+        response = self.do_get(reverse(
+            'mobileapps-organization-themes', kwargs={'organization_id': self.organization1.id}
+        ))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 1)
+
+        response = self.do_get(reverse(
+            'mobileapps-organization-themes', kwargs={'organization_id': self.organization2.id}
+        ))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 0)
 
     def test_mobileapps_organization_theme_add(self):
         file_image = get_temporary_image()
@@ -1115,15 +1365,19 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['logo_image']['has_image'], True)
 
     def test_mobileapps_organization_theme_detail_update_with_non_staff_user(self):
-        self.user = UserFactory.create(username='test_non_staff', email='test@edx.org', password='test_password')
-        self.client = Client()
-        self.client.login(username=self.user.username, password='test_password')
-
+        self.organization1.users.add(self.non_staff_user)
+        self.login_with_non_staff_user()
         organization_theme = Theme.objects.create(
             name='Blue',
             logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
             active=True,
             organization=self.organization1,
+        )
+        organization_theme2 = Theme.objects.create(
+            name='Green',
+            logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            active=True,
+            organization=self.organization2,
         )
 
         data = {
@@ -1132,13 +1386,11 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
             'active': True,
             'organization': self.organization1.id,
         }
-
         response = self.do_patch(reverse(
             'mobileapps-organization-themes-detail', kwargs={
                 'theme_id': organization_theme.id,
             }
         ), data)
-
         self.assertEqual(response.status_code, 403)
 
         response = self.do_get(reverse(
@@ -1146,12 +1398,18 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
                 'theme_id': organization_theme.id,
             }
         ))
-
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['name'], 'Blue')
         self.assertIn('logo_image_uploaded_at', response.data)
         self.assertEqual(response.data['organization'], self.organization1.id)
         self.assertEqual(response.data['logo_image']['has_image'], True)
+
+        response = self.do_get(reverse(
+            'mobileapps-organization-themes-detail', kwargs={
+                'theme_id': organization_theme2.id,
+            }
+        ))
+        self.assertEqual(response.status_code, 404)
 
     def test_mobileapps_organization_theme_detail_delete(self):
         organization_theme = Theme.objects.create(
@@ -1197,14 +1455,6 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
             active=True,
             organization=self.organization1,
         )
-        response = self.do_get(reverse(
-            'mobileapps-organization-themes-detail', kwargs={
-                'theme_id': organization_theme.id,
-            }
-        ))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['organization'], self.organization1.id)
 
         response = self.do_delete(reverse(
             'mobileapps-organization-themes-detail', kwargs={
