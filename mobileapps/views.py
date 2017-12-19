@@ -185,6 +185,9 @@ class MobileAppView(MobileListCreateAPIView):
 
     serializer_class = MobileAppSerializer
 
+    def __init__(self):
+        self.permission_classes += (IsStaffOrReadOnlyView,)
+
     def get_queryset(self):
         """
         Optionally restricts the returned mobile apps to a given user,
@@ -203,6 +206,10 @@ class MobileAppView(MobileListCreateAPIView):
 
         if organization_ids is not None:
             queryset = queryset.filter(organizations__in=organization_ids).distinct()
+
+        if not self.request.user.is_staff:
+            user_organizations = self.request.user.organizations.all()
+            queryset = queryset.filter(organizations__in=user_organizations).distinct()
 
         return queryset
 
@@ -276,8 +283,23 @@ class MobileAppDetailView(MobileRetrieveUpdateAPIView):
         * organizations: List of organization ids in this app
     """
 
-    queryset = MobileApp.objects.all()
     serializer_class = MobileAppSerializer
+
+    def __init__(self):
+        self.permission_classes += (IsStaffOrReadOnlyView,)
+
+    def get_queryset(self):
+        """
+        Optionally restricts the returned mobile apps to a given user,
+        by filtering against a 'app name' or 'organization name' query parameter in the URL.
+        """
+        queryset = MobileApp.objects.all()
+
+        if not self.request.user.is_staff:
+            user_organizations = self.request.user.organizations.all()
+            queryset = queryset.filter(organizations__in=user_organizations).distinct()
+
+        return queryset
 
 
 class MobileAppUserView(MobileListAPIView):
@@ -294,12 +316,20 @@ class MobileAppUserView(MobileListAPIView):
     """
     serializer_class = SimpleUserSerializer
 
+    def __init__(self):
+        self.permission_classes += (IsStaffOrReadOnlyView,)
+
     def get_queryset(self):
         """
         Restricts the returned users to a given mobile app,
         by filtering against a 'mobile_app_id' in kwargs.
         """
-        return User.objects.filter(mobile_apps__exact=self.kwargs['mobile_app_id'])
+        queryset = User.objects.filter(mobile_apps__exact=self.kwargs['mobile_app_id'])
+        if not self.request.user.is_staff:
+            user_organizations = self.request.user.organizations.all()
+            queryset = queryset.filter(organizations__in=user_organizations)
+
+        return queryset
 
     def post(self, request, mobile_app_id):
         """
@@ -358,12 +388,18 @@ class MobileAppOrganizationView(MobileListAPIView):
     """
     serializer_class = BasicOrganizationSerializer
 
+    def __init__(self):
+        self.permission_classes += (IsStaffOrReadOnlyView,)
+
     def get_queryset(self):
         """
         Restricts the returned organizations to a given mobile app,
         by filtering against a 'mobile_app_id' in kwargs.
         """
-        return Organization.objects.filter(mobile_apps__exact=self.kwargs['mobile_app_id'])
+        queryset = Organization.objects.filter(mobile_apps__exact=self.kwargs['mobile_app_id'])
+        if not self.request.user.is_staff:
+            queryset = queryset.filter(users=self.request.user)
+        return queryset
 
     def post(self, request, mobile_app_id):
         """
@@ -431,6 +467,8 @@ class MobileAppsNotifications(MobileAPIView):
 
         * message: Accepted
     """
+    def __init__(self):
+        self.permission_classes += (IsStaffOrReadOnlyView,)
 
     def post(self, request):
 
@@ -480,6 +518,8 @@ class MobileAppAllUsersNotifications(MobileAPIView):
 
         * message: Accepted
     """
+    def __init__(self):
+        self.permission_classes += (IsStaffOrReadOnlyView,)
 
     def post(self, request, mobile_app_id):
 
@@ -540,6 +580,9 @@ class MobileAppSelectedUsersNotifications(MobileAPIView):
         * message: Accepted
     """
 
+    def __init__(self):
+        self.permission_classes += (IsStaffOrReadOnlyView,)
+
     def post(self, request, mobile_app_id):
 
         message = request.data.get('message', None)
@@ -599,6 +642,8 @@ class MobileAppOrganizationAllUsersNotifications(MobileAPIView):
 
         * message: Accepted
     """
+    def __init__(self):
+        self.permission_classes += (IsStaffOrReadOnlyView,)
 
     def post(self, request, mobile_app_id, organization_id):
 
@@ -726,7 +771,11 @@ class OrganizationThemeView(MobileListCreateAPIView):
         """
         Optionally restricts the returned themes to active only.
         """
-        return Theme.objects.filter(active=True, organization_id=self.kwargs['organization_id'])
+        queryset = Theme.objects.filter(active=True, organization_id=self.kwargs['organization_id'])
+        if not self.request.user.is_staff:
+            user_organizations = self.request.user.organizations.all()
+            queryset = queryset.filter(organization__in=user_organizations)
+        return queryset
 
     @transaction.atomic
     def post(self, request, organization_id):
@@ -832,11 +881,20 @@ class OrganizationThemeDetailView(MobileRetrieveUpdateDestroyAPIView):
     """
 
     serializer_class = ThemeSerializer
-    queryset = Theme.objects.all()
     lookup_url_kwarg = 'theme_id'
 
     def __init__(self):
         self.permission_classes += (IsStaffOrReadOnlyView,)
+
+    def get_queryset(self):
+        """
+        Optionally restricts the returned themes only user's organizatons in case of non staff users.
+        """
+        queryset = Theme.objects.all()
+        if not self.request.user.is_staff:
+            user_organizations = self.request.user.organizations.all()
+            queryset = queryset.filter(organization__in=user_organizations)
+        return queryset
 
     @transaction.atomic
     def patch(self, request, theme_id):
