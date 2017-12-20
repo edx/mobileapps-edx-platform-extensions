@@ -137,6 +137,11 @@ class Theme(TimeStampedModel):
     name = models.CharField(max_length=255, null=True, blank=True)
     logo_image_uploaded_at = models.DateTimeField(db_index=True, null=True, blank=True)
     organization = models.ForeignKey(Organization, related_name="theme")
+    header_background_color = models.CharField(max_length=255, null=True, blank=True)
+    navigation_text_color = models.CharField(max_length=255, null=True, blank=True)
+    navigation_icon_color = models.CharField(max_length=255, null=True, blank=True)
+    completed_course_tint = models.CharField(max_length=255, null=True, blank=True)
+    lesson_navigation_color = models.CharField(max_length=255, null=True, blank=True)
     active = models.NullBooleanField(default=None)
 
     class Meta:

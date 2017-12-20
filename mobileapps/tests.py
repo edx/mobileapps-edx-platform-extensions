@@ -1182,10 +1182,16 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
 
     def test_mobileapps_organization_theme_add(self):
         file_image = get_temporary_image()
+        sample_color = '#ffffff'
         data = {
             'name': 'Test Theme',
             'active': True,
             'logo_image': file_image,
+            'header_background_color': sample_color,
+            'navigation_text_color': sample_color,
+            'navigation_icon_color': sample_color,
+            'completed_course_tint': sample_color,
+            'lesson_navigation_color': sample_color,
         }
 
         response = self.do_post_multipart(reverse(
@@ -1206,6 +1212,12 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['results'][0]['name'], 'Test Theme')
         self.assertIn('logo_image_uploaded_at', response.data['results'][0])
         self.assertEqual(response.data['results'][0]['organization'], self.organization2.id)
+
+        self.assertEqual(response.data['results'][0]['header_background_color'], sample_color)
+        self.assertEqual(response.data['results'][0]['navigation_text_color'], sample_color)
+        self.assertEqual(response.data['results'][0]['navigation_icon_color'], sample_color)
+        self.assertEqual(response.data['results'][0]['completed_course_tint'], sample_color)
+        self.assertEqual(response.data['results'][0]['lesson_navigation_color'], sample_color)
 
         self.assertEqual(response.data['results'][0]['logo_image']['has_image'], True)
         self.assertIn('image_url_full', response.data['results'][0]['logo_image'])
@@ -1330,6 +1342,7 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['logo_image']['has_image'], True)
 
     def test_mobileapps_organization_theme_detail_update(self):
+        sample_color = '#ffffff'
         organization_theme = Theme.objects.create(
             name='Blue',
             logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
@@ -1342,6 +1355,11 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
             'name': 'Blue Theme',
             'active': True,
             'organization': self.organization1.id,
+            'header_background_color': sample_color,
+            'navigation_text_color': sample_color,
+            'navigation_icon_color': sample_color,
+            'completed_course_tint': sample_color,
+            'lesson_navigation_color': sample_color,
         }
 
         response = self.do_patch(reverse(
@@ -1362,6 +1380,11 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['name'], 'Blue Theme')
         self.assertIn('logo_image_uploaded_at', response.data)
         self.assertEqual(response.data['organization'], self.organization1.id)
+        self.assertEqual(response.data['header_background_color'], sample_color)
+        self.assertEqual(response.data['navigation_text_color'], sample_color)
+        self.assertEqual(response.data['navigation_icon_color'], sample_color)
+        self.assertEqual(response.data['completed_course_tint'], sample_color)
+        self.assertEqual(response.data['lesson_navigation_color'], sample_color)
         self.assertEqual(response.data['logo_image']['has_image'], True)
 
     def test_mobileapps_organization_theme_detail_update_with_non_staff_user(self):

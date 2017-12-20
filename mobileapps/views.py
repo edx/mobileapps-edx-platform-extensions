@@ -720,6 +720,11 @@ class OrganizationThemeView(MobileListCreateAPIView):
         * logo_image: Image file to be updated as a logo of the theme
         * name: Name of the theme (Optional)
         * active: theme is active or not (Optional)
+        * header_background_color (Optional)
+        * navigation_text_color (Optional)
+        * navigation_icon_color (Optional)
+        * completed_course_tint (Optional)
+        * lesson_navigation_color (Optional)
 
     **Response Values**
 
@@ -739,9 +744,14 @@ class OrganizationThemeView(MobileListCreateAPIView):
             - image_url_small
             - image_url_xsmall
             - image_url_medium
-        * name: Name of the theme (Optional)
-        * active: theme is active or not (Optional)
+        * name: Name of the theme
+        * active: theme is active or not
         * organization_id: organization id to which theme is related
+        * header_background_color
+        * navigation_text_color
+        * navigation_icon_color
+        * completed_course_tint
+        * lesson_navigation_color
 
         **POST**
 
@@ -757,9 +767,14 @@ class OrganizationThemeView(MobileListCreateAPIView):
             - image_url_small
             - image_url_xsmall
             - image_url_medium
-        * name: Name of the theme (Optional)
-        * active: theme is active or not (Optional)
+        * name: Name of the theme
+        * active: theme is active or not
         * organization_id: organization id to which theme is related
+        * header_background_color
+        * navigation_text_color
+        * navigation_icon_color
+        * completed_course_tint
+        * lesson_navigation_color
     """
 
     serializer_class = ThemeSerializer
@@ -839,9 +854,14 @@ class OrganizationThemeDetailView(MobileRetrieveUpdateDestroyAPIView):
             - image_url_small
             - image_url_xsmall
             - image_url_medium
-        * name: Name of the theme (Optional)
-        * active: theme is active or not (Optional)
+        * name: Name of the theme
+        * active: theme is active or not
         * organization_id: organization id to which theme is related
+        * header_background_color
+        * navigation_text_color
+        * navigation_icon_color
+        * completed_course_tint
+        * lesson_navigation_color
 
         **PATCH**
 
@@ -857,9 +877,14 @@ class OrganizationThemeDetailView(MobileRetrieveUpdateDestroyAPIView):
             - image_url_small
             - image_url_xsmall
             - image_url_medium
-        * name: Name of the theme (Optional)
-        * active: theme is active or not (Optional)
+        * name: Name of the theme
+        * active: theme is active or not
         * organization_id: organization id to which theme is related
+        * header_background_color
+        * navigation_text_color
+        * navigation_icon_color
+        * completed_course_tint
+        * lesson_navigation_color
 
         **PUT**
 
@@ -875,9 +900,14 @@ class OrganizationThemeDetailView(MobileRetrieveUpdateDestroyAPIView):
             - image_url_small
             - image_url_xsmall
             - image_url_medium
-        * name: Name of the theme (Optional)
-        * active: theme is active or not (Optional)
+        * name: Name of the theme
+        * active: theme is active or not
         * organization_id: organization id to which theme is related
+        * header_background_color
+        * navigation_text_color
+        * navigation_icon_color
+        * completed_course_tint
+        * lesson_navigation_color
     """
 
     serializer_class = ThemeSerializer
