@@ -31,6 +31,13 @@ class MobileAppSerializer(serializers.ModelSerializer):
         return super(MobileAppSerializer, self).update(instance, validated_data)
 
 
+class BasicMobileAppSerializer(MobileAppSerializer):
+    class Meta:
+        model = MobileAppSerializer.Meta.model
+        fields = ('name', 'ios_app_id', 'android_app_id', 'ios_download_url', 'android_download_url',
+                  'deployment_mechanism', 'current_version', 'is_active')
+
+
 class ThemeSerializer(serializers.ModelSerializer):
     logo_image = serializers.SerializerMethodField()
 
@@ -42,3 +49,11 @@ class ThemeSerializer(serializers.ModelSerializer):
             "{}-{}".format(theme.organization.name, theme.id),
             theme.logo_image_uploaded_at,
         )
+
+
+class BasicThemeSerializer(ThemeSerializer):
+    """ Serializer for Theme without organization data """
+
+    class Meta:
+        model = ThemeSerializer.Meta.model
+        exclude = ('organization',)
