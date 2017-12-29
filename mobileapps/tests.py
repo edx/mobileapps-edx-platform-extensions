@@ -106,6 +106,7 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
 
         self.test_mobileapp_name = str(uuid.uuid4())
         self.test_mobileapp_ios_app_id = str(uuid.uuid4())
+        self.test_mobileapp_ios_bundle_id = str(uuid.uuid4())
         self.test_mobileapp_android_app_id = str(uuid.uuid4())
         self.test_mobileapp_deployment_mechanism = 1
         self.test_mobileapp_current_version = str(uuid.uuid4())
@@ -133,6 +134,7 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
             'name': mobileapp_data.get('name', self.test_mobileapp_name),
             'android_app_id': mobileapp_data.get('android_app_id', self.test_mobileapp_android_app_id),
             'ios_app_id': mobileapp_data.get('ios_app_id', self.test_mobileapp_ios_app_id),
+            'ios_bundle_id': mobileapp_data.get('ios_bundle_id', self.test_mobileapp_ios_bundle_id),
             'current_version': mobileapp_data.get('current_version', self.test_mobileapp_current_version),
             'deployment_mechanism': mobileapp_data.get(
                 'deployment_mechanism', self.test_mobileapp_deployment_mechanism),
@@ -175,6 +177,8 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
             self.assertEqual(len(mobileapp['organizations']), len(organizations))
             self.assertIsNotNone(mobileapp['created'])
             self.assertIsNotNone(mobileapp['modified'])
+            self.assertIsNotNone(mobileapp['ios_app_id'])
+            self.assertIsNotNone(mobileapp['ios_bundle_id'])
 
         # fetch data with page outside range
         response = self.do_get('{}?page=5'.format(self.base_mobileapps_uri))
@@ -323,7 +327,8 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
 
     def test_mobileapps_detail_get(self):
         mobileapp_data = self.setup_test_mobileapp(mobileapp_data={
-            "name": 'ABC App', "provider_key": "ABC key", "provider_secret": "ABC secret"
+            "name": 'ABC App', "provider_key": "ABC key",
+            "provider_secret": "ABC secret", "ios_bundle_id": "com.example.testing.app"
         })
 
         response = self.do_get(reverse('mobileapps-detail', kwargs={'pk': mobileapp_data['id']}))
@@ -333,6 +338,7 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['is_active'], True)
         self.assertIn("android_app_id", response.data)
         self.assertIn("ios_app_id", response.data)
+        self.assertEqual(response.data["ios_bundle_id"], "com.example.testing.app")
         self.assertIn("deployment_mechanism", response.data)
         self.assertIn("ios_download_url", response.data)
         self.assertIn("android_download_url", response.data)
@@ -350,6 +356,7 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
             name='ABC App',
             current_version=self.test_mobileapp_current_version,
             ios_app_id=self.test_mobileapp_ios_app_id,
+            ios_bundle_id=self.test_mobileapp_ios_bundle_id,
             android_app_id=self.test_mobileapp_android_app_id,
             deployment_mechanism=self.test_mobileapp_deployment_mechanism,
             updated_by=self.user,
@@ -367,6 +374,7 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['name'], data['name'])
         self.assertEqual(response.data['ios_app_id'], mobileapp.ios_app_id)
+        self.assertEqual(response.data['ios_bundle_id'], mobileapp.ios_bundle_id)
         self.assertEqual(response.data['android_app_id'], mobileapp.android_app_id)
         self.assertEqual(response.data['updated_by'], self.user.id)
         self.assertEqual(response.data['is_active'], mobileapp.is_active)
@@ -376,6 +384,7 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
             name='ABC App',
             current_version=self.test_mobileapp_current_version,
             ios_app_id=self.test_mobileapp_ios_app_id,
+            ios_bundle_id=self.test_mobileapp_ios_bundle_id,
             android_app_id=self.test_mobileapp_android_app_id,
             deployment_mechanism=self.test_mobileapp_deployment_mechanism,
             updated_by=self.user,
@@ -389,6 +398,7 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['name'], data['name'])
         self.assertEqual(response.data['ios_app_id'], mobileapp.ios_app_id)
+        self.assertEqual(response.data['ios_bundle_id'], mobileapp.ios_bundle_id)
         self.assertEqual(response.data['android_app_id'], mobileapp.android_app_id)
         self.assertEqual(response.data['updated_by'], self.user.id)
         self.assertEqual(response.data['is_active'], mobileapp.is_active)
