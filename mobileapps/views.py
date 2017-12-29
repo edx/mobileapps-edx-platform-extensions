@@ -104,6 +104,7 @@ class MobileAppView(MobileListCreateAPIView):
 
         * name: Name of the app,
         * ios_app_id: ios app ID
+        * ios_bundle_id: ios app's bundle ID
         * android_app_id: Android app ID
         * ios_download_url: IOS Download URL of the app.
         * android_download_url: Android Download URL of the app.
@@ -135,6 +136,7 @@ class MobileAppView(MobileListCreateAPIView):
         * modified: Datetime it was modified in.
         * name: Name of the app,
         * ios_app_id: ios app ID
+        * ios_bundle_id: ios app's bundle ID
         * android_app_id: Android app ID
         * ios_download_url: IOS Download URL of the app.
         * android_download_url: Android Download URL of the app.
@@ -163,6 +165,7 @@ class MobileAppView(MobileListCreateAPIView):
         * modified: Datetime it was modified in.
         * name: Name of the app,
         * ios_app_id: ios app ID
+        * ios_bundle_id: ios app's bundle ID
         * android_app_id: Android app ID
         * ios_download_url: IOS Download URL of the app.
         * android_download_url: Android Download URL of the app.
@@ -232,6 +235,7 @@ class MobileAppDetailView(MobileRetrieveUpdateAPIView):
 
         * name: Name of the app,
         * ios_app_id: ios app ID
+        * ios_bundle_id: ios app's bundle ID
         * android_app_id: Android app ID
         * ios_download_url: IOS Download URL of the app.
         * android_download_url: Android Download URL of the app.
@@ -263,6 +267,7 @@ class MobileAppDetailView(MobileRetrieveUpdateAPIView):
         * modified: Datetime it was modified in.
         * name: Name of the app,
         * ios_app_id: ios app ID
+        * ios_bundle_id: ios app's bundle ID
         * android_app_id: Android app ID
         * ios_download_url: IOS Download URL of the app.
         * android_download_url: Android Download URL of the app.

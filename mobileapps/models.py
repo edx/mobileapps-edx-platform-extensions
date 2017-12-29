@@ -49,6 +49,7 @@ class MobileApp(TimeStampedModel):
     """
     name = models.CharField(max_length=255)
     ios_app_id = models.CharField(max_length=255, db_index=True, null=True, blank=True)
+    ios_bundle_id = models.CharField(max_length=255, db_index=True, null=True, blank=True)
     android_app_id = models.CharField(max_length=255, db_index=True, null=True, blank=True)
     ios_download_url = models.CharField(max_length=255, null=True, blank=True)
     android_download_url = models.CharField(max_length=255, null=True, blank=True)
@@ -91,6 +92,7 @@ class MobileAppHistory(models.Model):
     """
     name = models.CharField(max_length=255)
     ios_app_id = models.CharField(max_length=255, db_index=True, null=True, blank=True)
+    ios_bundle_id = models.CharField(max_length=255, db_index=True, null=True, blank=True)
     android_app_id = models.CharField(max_length=255, db_index=True, null=True, blank=True)
     ios_download_url = models.CharField(max_length=255, null=True, blank=True)
     android_download_url = models.CharField(max_length=255, null=True, blank=True)
@@ -115,6 +117,7 @@ def user_post_save_callback(sender, **kwargs):
     mobile_app_history = MobileAppHistory()
     mobile_app_history.name = mobile_app.name
     mobile_app_history.ios_app_id = mobile_app.ios_app_id
+    mobile_app_history.ios_bundle_id = mobile_app.ios_bundle_id
     mobile_app_history.android_app_id = mobile_app.android_app_id
     mobile_app_history.ios_download_url = mobile_app.ios_download_url
     mobile_app_history.android_download_url = mobile_app.android_download_url
