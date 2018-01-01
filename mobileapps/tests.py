@@ -9,6 +9,7 @@ import datetime
 import ddt
 from pytz import UTC
 from mock import patch
+from django.conf import settings
 from django.core.cache import cache
 from django.core.urlresolvers import reverse
 from django.test.client import Client
@@ -26,6 +27,7 @@ from mobileapps.models import MobileApp, NotificationProvider, Theme
 
 
 TEST_LOGO_IMAGE_UPLOAD_DT = datetime.datetime(2002, 1, 9, 15, 43, tzinfo=UTC)
+TEST_HEADER_BG_IMAGE_UPLOAD_DT = datetime.datetime(2002, 1, 9, 20, 43, tzinfo=UTC)
 
 
 @ddt.ddt
@@ -1123,6 +1125,7 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         organization_theme = Theme.objects.create(
             name='Blue',
             logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            header_bg_image_uploaded_at=TEST_HEADER_BG_IMAGE_UPLOAD_DT,
             active=False,
             organization=self.organization1,
         )
@@ -1150,6 +1153,7 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertIn('logo_image_uploaded_at', response.data['results'][0])
         self.assertEqual(response.data['results'][0]['organization'], self.organization1.id)
         self.assertEqual(response.data['results'][0]['logo_image']['has_image'], True)
+        self.assertEqual(response.data['results'][0]['header_bg_image']['has_image'], True)
 
         response = self.do_get(reverse(
             'mobileapps-organization-themes', kwargs={'organization_id': self.organization2.id}
@@ -1168,12 +1172,14 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         Theme.objects.create(
             name='Theme for org1',
             logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            header_bg_image_uploaded_at=TEST_HEADER_BG_IMAGE_UPLOAD_DT,
             active=True,
             organization=self.organization1,
         )
         Theme.objects.create(
             name='Theme for org2',
             logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            header_bg_image_uploaded_at=TEST_HEADER_BG_IMAGE_UPLOAD_DT,
             active=True,
             organization=self.organization2,
         )
@@ -1191,12 +1197,14 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['count'], 0)
 
     def test_mobileapps_organization_theme_add(self):
-        file_image = get_temporary_image()
+        logo_image = get_temporary_image()
+        header_bg_image = get_temporary_image()
         sample_color = '#ffffff'
         data = {
             'name': 'Test Theme',
             'active': True,
-            'logo_image': file_image,
+            'logo_image': logo_image,
+            'header_bg_image': header_bg_image,
             'header_background_color': sample_color,
             'navigation_text_color': sample_color,
             'navigation_icon_color': sample_color,
@@ -1230,11 +1238,12 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['results'][0]['lesson_navigation_color'], sample_color)
 
         self.assertEqual(response.data['results'][0]['logo_image']['has_image'], True)
-        self.assertIn('image_url_full', response.data['results'][0]['logo_image'])
-        self.assertIn('image_url_large', response.data['results'][0]['logo_image'])
-        self.assertIn('image_url_medium', response.data['results'][0]['logo_image'])
-        self.assertIn('image_url_small', response.data['results'][0]['logo_image'])
-        self.assertIn('image_url_x-small', response.data['results'][0]['logo_image'])
+        for key, value in settings.ORGANIZATION_LOGO_IMAGE_SIZES_MAP.items():
+            self.assertIn('image_url_{}'.format(key), response.data['results'][0]['logo_image'])
+
+        self.assertEqual(response.data['results'][0]['header_bg_image']['has_image'], True)
+        for key, value in settings.ORGANIZATION_HEADER_BG_IMAGE_SIZES_MAP.items():
+            self.assertIn('image_url_{}'.format(key), response.data['results'][0]['header_bg_image'])
 
     def test_mobileapps_organization_theme_add_with_non_staff_user(self):
         self.user = UserFactory.create(username='test_non_staff', email='test@edx.org', password='test_password')
@@ -1246,6 +1255,7 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
             'name': 'Test Theme',
             'active': True,
             'logo_image': file_image,
+            'header_bg_image': file_image,
         }
 
         response = self.do_post_multipart(reverse(
@@ -1278,6 +1288,7 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         organization_theme = Theme.objects.create(
             name='Blue',
             logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            header_bg_image_uploaded_at=TEST_HEADER_BG_IMAGE_UPLOAD_DT,
             active=True,
             organization=self.organization1,
         )
@@ -1294,6 +1305,7 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertIn('logo_image_uploaded_at', response.data['results'][0])
         self.assertEqual(response.data['results'][0]['organization'], self.organization1.id)
         self.assertEqual(response.data['results'][0]['logo_image']['has_image'], True)
+        self.assertEqual(response.data['results'][0]['header_bg_image']['has_image'], True)
 
         file_image = get_temporary_image()
         data = {
@@ -1321,6 +1333,7 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertIn('logo_image_uploaded_at', response.data['results'][0])
         self.assertEqual(response.data['results'][0]['organization'], self.organization1.id)
         self.assertEqual(response.data['results'][0]['logo_image']['has_image'], True)
+        self.assertEqual(response.data['results'][0]['header_bg_image']['has_image'], False)
 
         # only one theme should remain active now, and it should be the latest one added
         theme = Theme.objects.get(organization_id=self.organization1.id, active=True)
@@ -1336,6 +1349,7 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         organization_theme = Theme.objects.create(
             name='Blue',
             logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            header_bg_image_uploaded_at=TEST_HEADER_BG_IMAGE_UPLOAD_DT,
             active=True,
             organization=self.organization1,
         )
@@ -1350,6 +1364,7 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertIn('logo_image_uploaded_at', response.data)
         self.assertEqual(response.data['organization'], self.organization1.id)
         self.assertEqual(response.data['logo_image']['has_image'], True)
+        self.assertEqual(response.data['header_bg_image']['has_image'], True)
 
     def test_mobileapps_organization_theme_detail_update(self):
         sample_color = '#ffffff'
@@ -1396,6 +1411,7 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['completed_course_tint'], sample_color)
         self.assertEqual(response.data['lesson_navigation_color'], sample_color)
         self.assertEqual(response.data['logo_image']['has_image'], True)
+        self.assertEqual(response.data['header_bg_image']['has_image'], False)
 
     def test_mobileapps_organization_theme_detail_update_with_non_staff_user(self):
         self.organization1.users.add(self.non_staff_user)
@@ -1403,12 +1419,14 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         organization_theme = Theme.objects.create(
             name='Blue',
             logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            header_bg_image_uploaded_at=TEST_HEADER_BG_IMAGE_UPLOAD_DT,
             active=True,
             organization=self.organization1,
         )
         organization_theme2 = Theme.objects.create(
             name='Green',
             logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            header_bg_image_uploaded_at=TEST_HEADER_BG_IMAGE_UPLOAD_DT,
             active=True,
             organization=self.organization2,
         )
@@ -1436,6 +1454,7 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertIn('logo_image_uploaded_at', response.data)
         self.assertEqual(response.data['organization'], self.organization1.id)
         self.assertEqual(response.data['logo_image']['has_image'], True)
+        self.assertEqual(response.data['header_bg_image']['has_image'], True)
 
         response = self.do_get(reverse(
             'mobileapps-organization-themes-detail', kwargs={
@@ -1448,6 +1467,7 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         organization_theme = Theme.objects.create(
             name='Blue',
             logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            header_bg_image_uploaded_at=TEST_HEADER_BG_IMAGE_UPLOAD_DT,
             active=True,
             organization=self.organization1,
         )
@@ -1485,6 +1505,7 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         organization_theme = Theme.objects.create(
             name='Blue',
             logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            header_bg_image_uploaded_at=TEST_HEADER_BG_IMAGE_UPLOAD_DT,
             active=True,
             organization=self.organization1,
         )
@@ -1496,3 +1517,27 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         ))
 
         self.assertEqual(response.status_code, 403)
+
+    def test_mobileapps_organization_theme_with_no_default_header_bg_image(self):
+        organization_theme = Theme.objects.create(
+            name='Blue Theme',
+            logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            active=True,
+            organization=self.organization1,
+        )
+
+        response = self.do_get(reverse(
+            'mobileapps-organization-themes-detail', kwargs={
+                'theme_id': organization_theme.id,
+            }
+        ))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['name'], 'Blue Theme')
+        self.assertIn('logo_image_uploaded_at', response.data)
+        self.assertEqual(response.data['organization'], self.organization1.id)
+        self.assertEqual(response.data['logo_image']['has_image'], True)
+        self.assertEqual(response.data['header_bg_image']['has_image'], False)
+
+        for key, value in settings.ORGANIZATION_HEADER_BG_IMAGE_SIZES_MAP.items():
+            self.assertNotIn('image_url_{}'.format(key), response.data['header_bg_image'])
