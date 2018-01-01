@@ -1,6 +1,9 @@
+from django.conf import settings
 from rest_framework import serializers
 
-from mobileapps.image_helpers import get_logo_image_urls_by_organization_name
+from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
+
+from mobileapps.image_helpers import get_image_urls_by_key
 from mobileapps.models import MobileApp, NotificationProvider, DEPLOYMENT_CHOICES, Theme
 
 
@@ -40,14 +43,33 @@ class BasicMobileAppSerializer(MobileAppSerializer):
 
 class ThemeSerializer(serializers.ModelSerializer):
     logo_image = serializers.SerializerMethodField()
+    header_bg_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Theme
 
     def get_logo_image(self, theme):
-        return get_logo_image_urls_by_organization_name(
-            "{}-{}".format(theme.organization.name, theme.id),
+        return get_image_urls_by_key(
+            settings.ORGANIZATION_THEME_IMAGE_SECRET_KEY,
+            "{}-{}-{}".format(theme.organization.name, theme.id, settings.ORGANIZATION_LOGO_IMAGE_KEY_PREFIX),
             theme.logo_image_uploaded_at,
+            settings.ORGANIZATION_LOGO_IMAGE_SIZES_MAP,
+            settings.ORGANIZATION_LOGO_IMAGE_BACKEND,
+            True,
+            configuration_helpers.get_value(
+                'ORGANIZATION_LOGO_IMAGE_DEFAULT_FILENAME',
+                settings.ORGANIZATION_LOGO_IMAGE_DEFAULT_FILENAME
+            )
+        )
+
+    def get_header_bg_image(self, theme):
+        return get_image_urls_by_key(
+            settings.ORGANIZATION_THEME_IMAGE_SECRET_KEY,
+            "{}-{}-{}".format(theme.organization.name, theme.id, settings.ORGANIZATION_HEADER_BG_IMAGE_KEY_PREFIX),
+            theme.header_bg_image_uploaded_at,
+            settings.ORGANIZATION_HEADER_BG_IMAGE_SIZES_MAP,
+            settings.ORGANIZATION_LOGO_IMAGE_BACKEND,
+            False,
         )
 
 

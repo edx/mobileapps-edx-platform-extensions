@@ -1,5 +1,6 @@
 import datetime
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import Http404
@@ -24,37 +25,32 @@ from edx_solutions_api_integration.users.serializers import SimpleUserSerializer
 from edx_solutions_api_integration.utils import get_ids_from_list_param
 from edx_solutions_organizations.models import Organization
 from edx_solutions_organizations.serializers import BasicOrganizationSerializer
-from image_helpers import get_logo_image_names, set_has_logo_image, create_logo_images
+from image_helpers import get_image_names, set_has_logo_image, create_images
 from openedx.core.djangoapps.profile_images.exceptions import ImageValidationError
 from openedx.core.djangoapps.profile_images.images import IMAGE_TYPES, validate_uploaded_image
 
-
+from mobileapps.image_helpers import get_image_names
 from mobileapps.models import MobileApp, NotificationProvider, Theme
 from mobileapps.serializers import MobileAppSerializer, NotificationProviderSerializer, ThemeSerializer
 from mobileapps.tasks import publish_mobile_apps_notifications_task
 
 
-def _save_logo(request, organization, theme):
+def _save_theme_image(uploaded_image, image_sizes, name_key, image_backend):
     # validate request:
     # verify that the user's
     # ensure any file was sent
-    if 'logo_image' not in request.FILES:
-        return False, {"message": u"No logo_image provided for logo image"}
-
-    uploaded_file = request.FILES['logo_image']
+    if not uploaded_image:
+        return False, "No image provided"
 
     # no matter what happens, delete the temporary file when we're done
-    with closing(uploaded_file):
+    with closing(uploaded_image):
         try:
-            validate_uploaded_image(uploaded_file)
+            validate_uploaded_image(uploaded_image)
         except ImageValidationError as error:
-            return False, {"message": error.message}
+            return False, error.message
 
-        logo_image_names = get_logo_image_names("{}-{}".format(organization.name, theme.id))
-        create_logo_images(uploaded_file, logo_image_names)
-
-        # update the theme to reflect that a logo image is available against this theme.
-        set_has_logo_image(theme, True, _make_upload_dt())
+        image_names = get_image_names(settings.ORGANIZATION_THEME_IMAGE_SECRET_KEY, name_key, image_sizes.values())
+        create_images(uploaded_image, image_names, image_backend)
         return True, None
 
 
@@ -801,7 +797,10 @@ class OrganizationThemeView(MobileListCreateAPIView):
         data["organization"] = organization_id
 
         if 'logo_image' not in request.FILES:
-            return Response({"message": u"No logo_image provided for logo image"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "message": u"No logo_image provided for logo image"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         Theme.mark_existing_as_inactive(organization_id)
         theme_serializer = ThemeSerializer(data=data)
@@ -809,10 +808,38 @@ class OrganizationThemeView(MobileListCreateAPIView):
             theme = theme_serializer.save()
 
             organization = Organization.objects.get(pk=organization_id)
-            is_logo_saved, response_dict = _save_logo(request, organization, theme)
+            uploaded_logo_image = request.FILES['logo_image']
+            is_logo_saved, logo_image_response = _save_theme_image(
+                uploaded_logo_image,
+                settings.ORGANIZATION_LOGO_IMAGE_SIZES_MAP,
+                "{}-{}-{}".format(organization.name, theme.id, settings.ORGANIZATION_LOGO_IMAGE_KEY_PREFIX),
+                settings.ORGANIZATION_LOGO_IMAGE_BACKEND,
+            )
+
             if is_logo_saved:
+                theme.logo_image_uploaded_at = _make_upload_dt()
+                theme.save()
+
+                if 'header_bg_image' in request.FILES:
+                    uploaded_header_bg_image = request.FILES['header_bg_image']
+                    is_header_bg_saved, header_image_response = _save_theme_image(
+                        uploaded_header_bg_image,
+                        settings.ORGANIZATION_HEADER_BG_IMAGE_SIZES_MAP,
+                        "{}-{}-{}".format(
+                            organization.name,
+                            theme.id,
+                            settings.ORGANIZATION_HEADER_BG_IMAGE_KEY_PREFIX,
+                        ),
+                        settings.ORGANIZATION_LOGO_IMAGE_BACKEND,
+                    )
+
+                    if is_header_bg_saved:
+                        theme.header_bg_image_uploaded_at = _make_upload_dt()
+                        theme.save()
+                    else:
+                        return Response({"message": header_image_response}, status=status.HTTP_400_BAD_REQUEST)
                 return Response(status=status.HTTP_201_CREATED)
-            return Response({"message": response_dict}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": logo_image_response}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class OrganizationThemeDetailView(MobileRetrieveUpdateDestroyAPIView):
@@ -935,25 +962,82 @@ class OrganizationThemeDetailView(MobileRetrieveUpdateDestroyAPIView):
 
         if 'logo_image' in request.FILES and 'organization' in request.data:
             organization = Organization.objects.get(pk=request.data['organization'])
-            is_logo_saved, response_dict = _save_logo(request, organization, theme)
-            if is_logo_saved:
-                return Response(status=status.HTTP_200_OK)
-            return Response({"message": response_dict}, status=status.HTTP_400_BAD_REQUEST)
+            uploaded_logo_image = request.FILES['logo_image']
+            is_logo_saved, logo_image_response = _save_theme_image(
+                uploaded_logo_image,
+                settings.ORGANIZATION_LOGO_IMAGE_SIZES_MAP,
+                "{}-{}-{}".format(organization.name, theme.id, settings.ORGANIZATION_LOGO_IMAGE_KEY_PREFIX),
+                settings.ORGANIZATION_LOGO_IMAGE_BACKEND,
+            )
 
+            if is_logo_saved:
+                theme.logo_image_uploaded_at = _make_upload_dt()
+                theme.save()
+            else:
+                return Response({"message": logo_image_response}, status=status.HTTP_400_BAD_REQUEST)
+
+        if 'header_bg_image' in request.FILES and 'organization' in request.data:
+            organization = Organization.objects.get(pk=request.data['organization'])
+            uploaded_header_bg_image = request.FILES['header_bg_image']
+            is_header_bg_saved, header_image_response = _save_theme_image(
+                uploaded_header_bg_image,
+                settings.ORGANIZATION_HEADER_BG_IMAGE_SIZES_MAP,
+                "{}-{}-{}".format(organization.name, theme.id, settings.ORGANIZATION_HEADER_BG_IMAGE_KEY_PREFIX),
+                settings.ORGANIZATION_LOGO_IMAGE_BACKEND,
+            )
+
+            if is_header_bg_saved:
+                theme.header_bg_image_uploaded_at = _make_upload_dt()
+                theme.save()
+            else:
+                return Response({"message": header_image_response}, status=status.HTTP_400_BAD_REQUEST)
         return Response(status=status.HTTP_200_OK)
 
     @transaction.atomic
     def put(self, request, theme_id):
-        if 'logo_image' in request.FILES:
+        if 'logo_image' in request.FILES and 'organization' in request.data:
             theme = Theme.objects.get(pk=theme_id)
             theme_serializer = ThemeSerializer(theme, data=request.data)
             if theme_serializer.is_valid(raise_exception=True):
                 theme = theme_serializer.save()
 
                 organization = Organization.objects.get(pk=request.data['organization'])
-                is_logo_saved, response_dict = _save_logo(request, organization, theme)
+                uploaded_logo_image = request.FILES['logo_image']
+                is_logo_saved, logo_image_response = _save_theme_image(
+                    uploaded_logo_image,
+                    settings.ORGANIZATION_LOGO_IMAGE_SIZES_MAP,
+                    "{}-{}-{}".format(organization.name, theme.id, settings.ORGANIZATION_LOGO_IMAGE_KEY_PREFIX),
+                    settings.ORGANIZATION_LOGO_IMAGE_BACKEND,
+                )
+
                 if is_logo_saved:
+                    theme.logo_image_uploaded_at = _make_upload_dt()
+                    theme.save()
+
+                    if 'header_bg_image' in request.FILES:
+                        uploaded_header_bg_image = request.FILES['header_bg_image']
+                        is_header_bg_saved, header_image_response = _save_theme_image(
+                            uploaded_header_bg_image,
+                            settings.ORGANIZATION_HEADER_BG_IMAGE_SIZES_MAP,
+                            "{}-{}-{}".format(
+                                organization.name,
+                                theme.id,
+                                settings.ORGANIZATION_HEADER_BG_IMAGE_KEY_PREFIX,
+                            ),
+                            settings.ORGANIZATION_LOGO_IMAGE_BACKEND,
+                        )
+
+                        if is_header_bg_saved:
+                            theme.header_bg_image_uploaded_at = _make_upload_dt()
+                            theme.save()
+                        else:
+                            return Response({"message": header_image_response}, status=status.HTTP_400_BAD_REQUEST)
+                    else:
+                        theme.header_bg_image_uploaded_at = None
+                        theme.save()
                     return Response(status=status.HTTP_200_OK)
+                else:
+                    return Response({"message": logo_image_response}, status=status.HTTP_400_BAD_REQUEST)
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, theme_id):
