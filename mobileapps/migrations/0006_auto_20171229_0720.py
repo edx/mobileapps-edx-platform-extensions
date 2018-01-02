@@ -21,4 +21,9 @@ class Migration(migrations.Migration):
             name='ios_bundle_id',
             field=models.CharField(db_index=True, max_length=255, null=True, blank=True),
         ),
+        migrations.AddField(
+            model_name='theme',
+            name='header_bg_image_uploaded_at',
+            field=models.DateTimeField(db_index=True, null=True, blank=True),
+        ),
     ]
