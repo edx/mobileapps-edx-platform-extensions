@@ -37,7 +37,7 @@ class MobileAppSerializer(serializers.ModelSerializer):
 class BasicMobileAppSerializer(MobileAppSerializer):
     class Meta:
         model = MobileAppSerializer.Meta.model
-        fields = ('name', 'ios_app_id', 'android_app_id', 'ios_download_url', 'android_download_url',
+        fields = ('name', 'ios_app_id', 'android_app_id', 'ios_download_url', 'android_download_url', 'ios_bundle_id',
                   'deployment_mechanism', 'current_version', 'is_active')
 
 
