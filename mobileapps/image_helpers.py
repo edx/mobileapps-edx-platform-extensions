@@ -191,9 +191,7 @@ def _scale_image(image, side_length, side_width):
     Given a PIL.Image object, get a resized copy having width equals `side_width` pixels
     and length `side_length` pixels.
     """
-    premultiply(image)
     resized_image = image.resize((side_length, side_width), Image.ANTIALIAS)
-    unmultiply(resized_image)
     return resized_image
 
 
@@ -202,30 +200,6 @@ def _set_color_mode_to_rgba(image):
     Given a PIL.Image object, return a copy with the color mode set to RGBA.
     """
     return image.convert('RGBA')
-
-
-def premultiply(im):
-    pixels = im.load()
-    for y in range(im.size[1]):
-        for x in range(im.size[0]):
-            r, g, b, a = pixels[x, y]
-            if a != 255:
-                r = r * a // 255
-                g = g * a // 255
-                b = b * a // 255
-                pixels[x, y] = (r, g, b, a)
-
-
-def unmultiply(im):
-    pixels = im.load()
-    for y in range(im.size[1]):
-        for x in range(im.size[0]):
-            r, g, b, a = pixels[x, y]
-            if a != 255 and a != 0:
-                r = 255 if r >= a else 255 * r // a
-                g = 255 if g >= a else 255 * g // a
-                b = 255 if b >= a else 255 * b // a
-                pixels[x, y] = (r, g, b, a)
 
 
 def _create_image_file(image, exif, format):
