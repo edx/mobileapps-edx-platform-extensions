@@ -1282,7 +1282,7 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
             'mobileapps-organization-themes', kwargs={'organization_id': self.organization2.id}), data,
         )
 
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 201)
 
     def test_mobileapps_organization_theme_add_and_inactive_previous(self):
         organization_theme = Theme.objects.create(
@@ -1413,6 +1413,31 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['logo_image']['has_image'], True)
         self.assertEqual(response.data['header_bg_image']['has_image'], False)
 
+        response = self.do_put(reverse(
+            'mobileapps-organization-themes-detail', kwargs={
+                'theme_id': organization_theme.id,
+            }
+        ), data)
+
+        self.assertEqual(response.status_code, 200)
+
+        response = self.do_get(reverse(
+            'mobileapps-organization-themes-detail', kwargs={
+                'theme_id': organization_theme.id,
+            }
+        ))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['name'], 'Blue Theme')
+        self.assertEqual(response.data['organization'], self.organization1.id)
+        self.assertEqual(response.data['header_background_color'], sample_color)
+        self.assertEqual(response.data['navigation_text_color'], sample_color)
+        self.assertEqual(response.data['navigation_icon_color'], sample_color)
+        self.assertEqual(response.data['completed_course_tint'], sample_color)
+        self.assertEqual(response.data['lesson_navigation_color'], sample_color)
+        self.assertEqual(response.data['logo_image']['has_image'], False)
+        self.assertEqual(response.data['header_bg_image']['has_image'], False)
+
     def test_mobileapps_organization_theme_detail_update_with_non_staff_user(self):
         self.organization1.users.add(self.non_staff_user)
         self.login_with_non_staff_user()
@@ -1518,10 +1543,9 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
 
         self.assertEqual(response.status_code, 403)
 
-    def test_mobileapps_organization_theme_with_no_default_header_bg_image(self):
+    def test_mobileapps_organization_theme_with_no_default_images(self):
         organization_theme = Theme.objects.create(
             name='Blue Theme',
-            logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
             active=True,
             organization=self.organization1,
         )
@@ -1536,8 +1560,11 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['name'], 'Blue Theme')
         self.assertIn('logo_image_uploaded_at', response.data)
         self.assertEqual(response.data['organization'], self.organization1.id)
-        self.assertEqual(response.data['logo_image']['has_image'], True)
+        self.assertEqual(response.data['logo_image']['has_image'], False)
         self.assertEqual(response.data['header_bg_image']['has_image'], False)
+
+        for key, value in settings.ORGANIZATION_LOGO_IMAGE_SIZES_MAP.items():
+            self.assertNotIn('image_url_{}'.format(key), response.data['logo_image'])
 
         for key, value in settings.ORGANIZATION_HEADER_BG_IMAGE_SIZES_MAP.items():
             self.assertNotIn('image_url_{}'.format(key), response.data['header_bg_image'])

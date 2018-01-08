@@ -55,11 +55,7 @@ class ThemeSerializer(serializers.ModelSerializer):
             theme.logo_image_uploaded_at,
             settings.ORGANIZATION_LOGO_IMAGE_SIZES_MAP,
             settings.ORGANIZATION_LOGO_IMAGE_BACKEND,
-            True,
-            configuration_helpers.get_value(
-                'ORGANIZATION_LOGO_IMAGE_DEFAULT_FILENAME',
-                settings.ORGANIZATION_LOGO_IMAGE_DEFAULT_FILENAME
-            )
+            False,
         )
 
     def get_header_bg_image(self, theme):
