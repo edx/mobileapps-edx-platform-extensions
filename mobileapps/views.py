@@ -7,6 +7,7 @@ from django.http import Http404
 from django.utils.translation import ugettext_lazy as _
 from django.utils.timezone import utc
 from django.db import transaction
+from django.shortcuts import get_object_or_404
 from contextlib import closing
 from rest_framework import status
 from rest_framework.response import Response
@@ -1036,7 +1037,7 @@ class OrganizationThemeDetailView(MobileRetrieveUpdateDestroyAPIView):
 
     @transaction.atomic
     def patch(self, request, theme_id):
-        theme = Theme.objects.get(pk=theme_id)
+        theme = get_object_or_404(Theme, pk=theme_id)
         theme_serializer = ThemeSerializer(theme, data=request.data)
         if theme_serializer.is_valid(raise_exception=True):
             theme = theme_serializer.save()
@@ -1076,7 +1077,7 @@ class OrganizationThemeDetailView(MobileRetrieveUpdateDestroyAPIView):
 
     @transaction.atomic
     def put(self, request, theme_id):
-        theme = Theme.objects.get(pk=theme_id)
+        theme = get_object_or_404(Theme, pk=theme_id)
         theme_serializer = ThemeSerializer(theme, data=request.data)
         if theme_serializer.is_valid(raise_exception=True):
             theme = theme_serializer.save()
@@ -1122,7 +1123,9 @@ class OrganizationThemeDetailView(MobileRetrieveUpdateDestroyAPIView):
         return Response(status=status.HTTP_200_OK)
 
     def delete(self, request, theme_id):
-        Theme.objects.filter(pk=theme_id).update(active=None)
+        theme = get_object_or_404(Theme, pk=theme_id)
+        theme.active = None
+        theme.save(update_fields=['active', 'modified'])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

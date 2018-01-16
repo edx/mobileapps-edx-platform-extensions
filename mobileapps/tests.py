@@ -1366,6 +1366,50 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
         self.assertEqual(response.data['logo_image']['has_image'], True)
         self.assertEqual(response.data['header_bg_image']['has_image'], True)
 
+    def test_mobileapps_organization_theme_not_found(self):
+        organization_theme = Theme.objects.create(
+            name='Blue',
+            logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            header_bg_image_uploaded_at=TEST_HEADER_BG_IMAGE_UPLOAD_DT,
+            active=True,
+            organization=self.organization1,
+        )
+
+        data = {
+            'id': organization_theme.id,
+            'name': 'Blue Theme',
+            'active': True,
+            'organization': self.organization1.id,
+        }
+
+        response = self.do_put(reverse(
+            'mobileapps-organization-themes-detail', kwargs={
+                'theme_id': '1234',
+            }
+        ), data)
+        self.assertEqual(response.status_code, 404)
+
+        response = self.do_patch(reverse(
+            'mobileapps-organization-themes-detail', kwargs={
+                'theme_id': '1234',
+            }
+        ), data)
+        self.assertEqual(response.status_code, 404)
+
+        response = self.do_put(reverse(
+            'mobileapps-organization-themes-detail', kwargs={
+                'theme_id': organization_theme.id,
+            }
+        ), data)
+        self.assertEqual(response.status_code, 200)
+
+        response = self.do_delete(reverse(
+            'mobileapps-organization-themes-detail', kwargs={
+                'theme_id': '1234',
+            }
+        ))
+        self.assertEqual(response.status_code, 404)
+
     def test_mobileapps_organization_theme_detail_update(self):
         sample_color = '#ffffff'
         organization_theme = Theme.objects.create(
