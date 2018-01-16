@@ -1036,90 +1036,97 @@ class OrganizationThemeDetailView(MobileRetrieveUpdateDestroyAPIView):
 
     @transaction.atomic
     def patch(self, request, theme_id):
-        theme = Theme.objects.get(pk=theme_id)
-        theme_serializer = ThemeSerializer(theme, data=request.data)
-        if theme_serializer.is_valid(raise_exception=True):
-            theme = theme_serializer.save()
+        try:
+            theme = Theme.objects.get(pk=theme_id)
+            theme_serializer = ThemeSerializer(theme, data=request.data)
+            if theme_serializer.is_valid(raise_exception=True):
+                theme = theme_serializer.save()
 
-        if 'logo_image' in request.FILES and 'organization' in request.data:
-            organization = Organization.objects.get(pk=request.data['organization'])
-            uploaded_logo_image = request.FILES['logo_image']
-            is_logo_saved, logo_image_response = _save_theme_image(
-                uploaded_logo_image,
-                settings.ORGANIZATION_LOGO_IMAGE_SIZES_MAP,
-                "{}-{}-{}".format(organization.name, theme.id, settings.ORGANIZATION_LOGO_IMAGE_KEY_PREFIX),
-                settings.ORGANIZATION_LOGO_IMAGE_BACKEND,
-            )
+            if 'logo_image' in request.FILES and 'organization' in request.data:
+                organization = Organization.objects.get(pk=request.data['organization'])
+                uploaded_logo_image = request.FILES['logo_image']
+                is_logo_saved, logo_image_response = _save_theme_image(
+                    uploaded_logo_image,
+                    settings.ORGANIZATION_LOGO_IMAGE_SIZES_MAP,
+                    "{}-{}-{}".format(organization.name, theme.id, settings.ORGANIZATION_LOGO_IMAGE_KEY_PREFIX),
+                    settings.ORGANIZATION_LOGO_IMAGE_BACKEND,
+                )
 
-            if is_logo_saved:
-                theme.logo_image_uploaded_at = _make_upload_dt()
-                theme.save()
-            else:
-                return Response({"message": logo_image_response}, status=status.HTTP_400_BAD_REQUEST)
+                if is_logo_saved:
+                    theme.logo_image_uploaded_at = _make_upload_dt()
+                    theme.save()
+                else:
+                    return Response({"message": logo_image_response}, status=status.HTTP_400_BAD_REQUEST)
 
-        if 'header_bg_image' in request.FILES and 'organization' in request.data:
-            organization = Organization.objects.get(pk=request.data['organization'])
-            uploaded_header_bg_image = request.FILES['header_bg_image']
-            is_header_bg_saved, header_image_response = _save_theme_image(
-                uploaded_header_bg_image,
-                settings.ORGANIZATION_HEADER_BG_IMAGE_SIZES_MAP,
-                "{}-{}-{}".format(organization.name, theme.id, settings.ORGANIZATION_HEADER_BG_IMAGE_KEY_PREFIX),
-                settings.ORGANIZATION_LOGO_IMAGE_BACKEND,
-            )
+            if 'header_bg_image' in request.FILES and 'organization' in request.data:
+                organization = Organization.objects.get(pk=request.data['organization'])
+                uploaded_header_bg_image = request.FILES['header_bg_image']
+                is_header_bg_saved, header_image_response = _save_theme_image(
+                    uploaded_header_bg_image,
+                    settings.ORGANIZATION_HEADER_BG_IMAGE_SIZES_MAP,
+                    "{}-{}-{}".format(organization.name, theme.id, settings.ORGANIZATION_HEADER_BG_IMAGE_KEY_PREFIX),
+                    settings.ORGANIZATION_LOGO_IMAGE_BACKEND,
+                )
 
-            if is_header_bg_saved:
-                theme.header_bg_image_uploaded_at = _make_upload_dt()
-                theme.save()
-            else:
-                return Response({"message": header_image_response}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(status=status.HTTP_200_OK)
+                if is_header_bg_saved:
+                    theme.header_bg_image_uploaded_at = _make_upload_dt()
+                    theme.save()
+                else:
+                    return Response({"message": header_image_response}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
 
     @transaction.atomic
     def put(self, request, theme_id):
-        theme = Theme.objects.get(pk=theme_id)
-        theme_serializer = ThemeSerializer(theme, data=request.data)
-        if theme_serializer.is_valid(raise_exception=True):
-            theme = theme_serializer.save()
+        try:
+            theme = Theme.objects.get(pk=theme_id)
+            theme_serializer = ThemeSerializer(theme, data=request.data)
+            if theme_serializer.is_valid(raise_exception=True):
+                theme = theme_serializer.save()
 
-        if 'logo_image' in request.FILES and 'organization' in request.data:
-            organization = Organization.objects.get(pk=request.data['organization'])
-            uploaded_logo_image = request.FILES['logo_image']
-            is_logo_saved, logo_image_response = _save_theme_image(
-                uploaded_logo_image,
-                settings.ORGANIZATION_LOGO_IMAGE_SIZES_MAP,
-                "{}-{}-{}".format(organization.name, theme.id, settings.ORGANIZATION_LOGO_IMAGE_KEY_PREFIX),
-                settings.ORGANIZATION_LOGO_IMAGE_BACKEND,
-            )
+            if 'logo_image' in request.FILES and 'organization' in request.data:
+                organization = Organization.objects.get(pk=request.data['organization'])
+                uploaded_logo_image = request.FILES['logo_image']
+                is_logo_saved, logo_image_response = _save_theme_image(
+                    uploaded_logo_image,
+                    settings.ORGANIZATION_LOGO_IMAGE_SIZES_MAP,
+                    "{}-{}-{}".format(organization.name, theme.id, settings.ORGANIZATION_LOGO_IMAGE_KEY_PREFIX),
+                    settings.ORGANIZATION_LOGO_IMAGE_BACKEND,
+                )
 
-            if is_logo_saved:
-                theme.logo_image_uploaded_at = _make_upload_dt()
+                if is_logo_saved:
+                    theme.logo_image_uploaded_at = _make_upload_dt()
+                    theme.save(update_fields=["logo_image_uploaded_at"])
+                else:
+                    return Response({"message": logo_image_response}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                theme.logo_image_uploaded_at = None
                 theme.save(update_fields=["logo_image_uploaded_at"])
+
+            if 'header_bg_image' in request.FILES and 'organization' in request.data:
+                organization = Organization.objects.get(pk=request.data['organization'])
+                uploaded_header_bg_image = request.FILES['header_bg_image']
+                is_header_bg_saved, header_image_response = _save_theme_image(
+                    uploaded_header_bg_image,
+                    settings.ORGANIZATION_HEADER_BG_IMAGE_SIZES_MAP,
+                    "{}-{}-{}".format(organization.name, theme.id, settings.ORGANIZATION_HEADER_BG_IMAGE_KEY_PREFIX),
+                    settings.ORGANIZATION_LOGO_IMAGE_BACKEND,
+                )
+
+                if is_header_bg_saved:
+                    theme.header_bg_image_uploaded_at = _make_upload_dt()
+                    theme.save(update_fields=["header_bg_image_uploaded_at"])
+                else:
+                    return Response({"message": header_image_response}, status=status.HTTP_400_BAD_REQUEST)
             else:
-                return Response({"message": logo_image_response}, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            theme.logo_image_uploaded_at = None
-            theme.save(update_fields=["logo_image_uploaded_at"])
-
-        if 'header_bg_image' in request.FILES and 'organization' in request.data:
-            organization = Organization.objects.get(pk=request.data['organization'])
-            uploaded_header_bg_image = request.FILES['header_bg_image']
-            is_header_bg_saved, header_image_response = _save_theme_image(
-                uploaded_header_bg_image,
-                settings.ORGANIZATION_HEADER_BG_IMAGE_SIZES_MAP,
-                "{}-{}-{}".format(organization.name, theme.id, settings.ORGANIZATION_HEADER_BG_IMAGE_KEY_PREFIX),
-                settings.ORGANIZATION_LOGO_IMAGE_BACKEND,
-            )
-
-            if is_header_bg_saved:
-                theme.header_bg_image_uploaded_at = _make_upload_dt()
+                theme.header_bg_image_uploaded_at = None
                 theme.save(update_fields=["header_bg_image_uploaded_at"])
-            else:
-                return Response({"message": header_image_response}, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            theme.header_bg_image_uploaded_at = None
-            theme.save(update_fields=["header_bg_image_uploaded_at"])
 
-        return Response(status=status.HTTP_200_OK)
+            return Response(status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
     def delete(self, request, theme_id):
         Theme.objects.filter(pk=theme_id).update(active=None)
