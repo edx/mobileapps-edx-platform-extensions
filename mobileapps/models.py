@@ -3,12 +3,15 @@ Django database models supporting the mobile apps
 """
 from django.contrib.auth.models import User
 from django.db import models
+from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from edx_solutions_api_integration.utils import StringCipher
 from edx_solutions_organizations.models import Organization
 from model_utils.fields import AutoCreatedField
 from model_utils.models import TimeStampedModel
+
+from mobileapps.image_helpers import remove_images, get_image_names
 
 DEPLOYMENT_CHOICES = (
     (1, 'Public app store'),
@@ -159,3 +162,23 @@ class Theme(TimeStampedModel):
             theme.save(update_fields=['active'])
         except Theme.DoesNotExist:
             pass
+
+    def remove_logo_image(self):
+        image_names = get_image_names(
+            settings.ORGANIZATION_THEME_IMAGE_SECRET_KEY,
+            "{}-{}-{}".format(self.organization.name, self.id, settings.ORGANIZATION_LOGO_IMAGE_KEY_PREFIX),
+            settings.ORGANIZATION_LOGO_IMAGE_SIZES_MAP.values()
+        )
+        remove_images(settings.ORGANIZATION_LOGO_IMAGE_BACKEND, image_names)
+        self.logo_image_uploaded_at = None
+        self.save(update_fields=['logo_image_uploaded_at', 'modified'])
+
+    def remove_header_bg_image(self):
+        image_names = get_image_names(
+            settings.ORGANIZATION_THEME_IMAGE_SECRET_KEY,
+            "{}-{}-{}".format(self.organization.name, self.id, settings.ORGANIZATION_HEADER_BG_IMAGE_KEY_PREFIX),
+            settings.ORGANIZATION_HEADER_BG_IMAGE_SIZES_MAP.values()
+        )
+        remove_images(settings.ORGANIZATION_LOGO_IMAGE_BACKEND, image_names)
+        self.header_bg_image_uploaded_at = None
+        self.save(update_fields=['header_bg_image_uploaded_at', 'modified'])

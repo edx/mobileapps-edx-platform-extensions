@@ -21,7 +21,7 @@ from edx_solutions_api_integration.permissions import (
     MobileRetrieveUpdateAPIView,
     MobileRetrieveUpdateDestroyAPIView,
 )
-from edx_solutions_api_integration.permissions import IsStaffOrReadOnlyView
+from edx_solutions_api_integration.permissions import IsStaffOrReadOnlyView, IsStaffView
 from edx_solutions_api_integration.users.serializers import SimpleUserSerializer
 from edx_solutions_api_integration.utils import get_ids_from_list_param
 from edx_solutions_organizations.models import Organization
@@ -842,7 +842,7 @@ class OrganizationThemeView(MobileListCreateAPIView):
 
                 if is_logo_saved:
                     theme.logo_image_uploaded_at = _make_upload_dt()
-                    theme.save(update_fields=["logo_image_uploaded_at"])
+                    theme.save(update_fields=['logo_image_uploaded_at', 'modified'])
                 else:
                     return Response({"message": logo_image_response}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -862,7 +862,7 @@ class OrganizationThemeView(MobileListCreateAPIView):
 
                 if is_header_bg_saved:
                     theme.header_bg_image_uploaded_at = _make_upload_dt()
-                    theme.save(update_fields=["header_bg_image_uploaded_at"])
+                    theme.save(update_fields=['header_bg_image_uploaded_at', 'modified'])
                 else:
                     return Response({"message": header_image_response}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1094,12 +1094,14 @@ class OrganizationThemeDetailView(MobileRetrieveUpdateDestroyAPIView):
 
             if is_logo_saved:
                 theme.logo_image_uploaded_at = _make_upload_dt()
-                theme.save(update_fields=["logo_image_uploaded_at"])
+                theme.save(update_fields=['logo_image_uploaded_at', 'modified'])
             else:
                 return Response({"message": logo_image_response}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            theme.logo_image_uploaded_at = None
-            theme.save(update_fields=["logo_image_uploaded_at"])
+            theme.remove_logo_image(
+                settings.ORGANIZATION_LOGO_IMAGE_SIZES_MAP,
+                "{}-{}-{}".format(theme.organization.name, theme.id, settings.ORGANIZATION_LOGO_IMAGE_KEY_PREFIX),
+            )
 
         if 'header_bg_image' in request.FILES and 'organization' in request.data:
             organization = Organization.objects.get(pk=request.data['organization'])
@@ -1113,12 +1115,14 @@ class OrganizationThemeDetailView(MobileRetrieveUpdateDestroyAPIView):
 
             if is_header_bg_saved:
                 theme.header_bg_image_uploaded_at = _make_upload_dt()
-                theme.save(update_fields=["header_bg_image_uploaded_at"])
+                theme.save(update_fields=['header_bg_image_uploaded_at', 'modified'])
             else:
                 return Response({"message": header_image_response}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            theme.header_bg_image_uploaded_at = None
-            theme.save(update_fields=["header_bg_image_uploaded_at"])
+            theme.remove_header_bg_image(
+                settings.ORGANIZATION_HEADER_BG_IMAGE_SIZES_MAP,
+                "{}-{}-{}".format(theme.organization.name, theme.id, settings.ORGANIZATION_HEADER_BG_IMAGE_KEY_PREFIX),
+            )
 
         return Response(status=status.HTTP_200_OK)
 
@@ -1129,3 +1133,35 @@ class OrganizationThemeDetailView(MobileRetrieveUpdateDestroyAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class OrganizationThemeRemoveImageView(MobileRetrieveUpdateDestroyAPIView):
+    """
+    **Use Case**
+
+        Remove logo image or header background image from the theme.
+
+    **Example Requests**
+
+        DELETE /api/server/mobileapps//themes/{id}/remove/{attribute}
+
+        - attribute
+            - Logo Image: logo_image
+            - Header Background Image: header_bg_image
+    """
+
+    serializer_class = ThemeSerializer
+    lookup_url_kwarg = 'theme_id'
+
+    def __init__(self):
+        self.permission_classes += (IsStaffView,)
+
+    @transaction.atomic
+    def delete(self, request, theme_id, attribute):
+        theme = get_object_or_404(Theme, pk=theme_id)
+
+        if attribute == 'logo_image':
+            theme.remove_logo_image()
+        elif attribute == 'header_bg_image':
+            theme.remove_header_bg_image()
+        else:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_200_OK)

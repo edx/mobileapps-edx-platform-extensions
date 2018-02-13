@@ -24,4 +24,7 @@ urlpatterns = patterns(
     url(r'^themes/(?P<theme_id>[0-9]+)$',
         mobile_views.OrganizationThemeDetailView.as_view(),
         name='mobileapps-organization-themes-detail'),
+    url(r'^themes/(?P<theme_id>[0-9]+)/remove/(?P<attribute>[\w\_]+)$',
+        mobile_views.OrganizationThemeRemoveImageView.as_view(),
+        name='mobileapps-organization-themes-remove-image'),
 )
