@@ -1612,3 +1612,82 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
 
         for key, value in settings.ORGANIZATION_HEADER_BG_IMAGE_SIZES_MAP.items():
             self.assertNotIn('image_url_{}'.format(key), response.data['header_bg_image'])
+
+    def test_mobileapps_organization_theme_remove_image(self):
+        organization_theme = Theme.objects.create(
+            name='Blue',
+            logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            header_bg_image_uploaded_at=TEST_HEADER_BG_IMAGE_UPLOAD_DT,
+            active=True,
+            organization=self.organization1,
+        )
+
+        response = self.do_delete(reverse(
+            'mobileapps-organization-themes-remove-image', kwargs={
+                'theme_id': organization_theme.id,
+                'attribute': 'logo_image'
+            }
+        ))
+        self.assertEqual(response.status_code, 200)
+
+        response = self.do_delete(reverse(
+            'mobileapps-organization-themes-remove-image', kwargs={
+                'theme_id': organization_theme.id,
+                'attribute': 'header_bg_image'
+            }
+        ))
+        self.assertEqual(response.status_code, 200)
+
+        response = self.do_get(reverse(
+            'mobileapps-organization-themes-detail', kwargs={
+                'theme_id': organization_theme.id,
+            }
+        ))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['logo_image']['has_image'], False)
+        self.assertEqual(response.data['header_bg_image']['has_image'], False)
+
+    def test_mobileapps_organization_theme_remove_image_with_invalid_data(self):
+        invalid_theme_id = 101
+        invalid_attribute = 'logo_image_remove'
+        organization_theme = Theme.objects.create(
+            name='Blue',
+            logo_image_uploaded_at=TEST_LOGO_IMAGE_UPLOAD_DT,
+            header_bg_image_uploaded_at=TEST_HEADER_BG_IMAGE_UPLOAD_DT,
+            active=True,
+            organization=self.organization1,
+        )
+
+        response = self.do_delete(reverse(
+            'mobileapps-organization-themes-remove-image', kwargs={
+                'theme_id': invalid_theme_id,
+                'attribute': 'logo_image'
+            }
+        ))
+        self.assertEqual(response.status_code, 404)
+
+        response = self.do_delete(reverse(
+            'mobileapps-organization-themes-remove-image', kwargs={
+                'theme_id': organization_theme.id,
+                'attribute': invalid_attribute
+            }
+        ))
+        self.assertEqual(response.status_code, 400)
+
+        response = self.do_delete(reverse(
+            'mobileapps-organization-themes-remove-image', kwargs={
+                'theme_id': organization_theme.id,
+                'attribute': 'logo_image'
+            }
+        ))
+        self.assertEqual(response.status_code, 200)
+
+        response = self.do_get(reverse(
+            'mobileapps-organization-themes-detail', kwargs={
+                'theme_id': organization_theme.id,
+            }
+        ))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['logo_image']['has_image'], False)

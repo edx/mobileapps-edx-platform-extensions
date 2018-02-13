@@ -141,6 +141,15 @@ def create_images(image_file, image_names, image_backend):
             storage.save(name, scaled_image_file)
 
 
+def remove_images(image_backend, image_names):
+    """
+    Physically remove the image files specified in `image_names`
+    """
+    storage = get_image_storage(image_backend)
+    for name in image_names.values():
+        storage.delete(name)
+
+
 def get_image_urls_by_key(
         secret_key,
         custom_key,
