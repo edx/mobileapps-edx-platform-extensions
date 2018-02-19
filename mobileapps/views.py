@@ -1098,10 +1098,7 @@ class OrganizationThemeDetailView(MobileRetrieveUpdateDestroyAPIView):
             else:
                 return Response({"message": logo_image_response}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            theme.remove_logo_image(
-                settings.ORGANIZATION_LOGO_IMAGE_SIZES_MAP,
-                "{}-{}-{}".format(theme.organization.name, theme.id, settings.ORGANIZATION_LOGO_IMAGE_KEY_PREFIX),
-            )
+            theme.remove_logo_image()
 
         if 'header_bg_image' in request.FILES and 'organization' in request.data:
             organization = Organization.objects.get(pk=request.data['organization'])
@@ -1119,10 +1116,7 @@ class OrganizationThemeDetailView(MobileRetrieveUpdateDestroyAPIView):
             else:
                 return Response({"message": header_image_response}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            theme.remove_header_bg_image(
-                settings.ORGANIZATION_HEADER_BG_IMAGE_SIZES_MAP,
-                "{}-{}-{}".format(theme.organization.name, theme.id, settings.ORGANIZATION_HEADER_BG_IMAGE_KEY_PREFIX),
-            )
+            theme.remove_header_bg_image()
 
         return Response(status=status.HTTP_200_OK)
 
