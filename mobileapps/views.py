@@ -1019,7 +1019,7 @@ class OrganizationThemeDetailView(MobileRetrieveUpdateDestroyAPIView):
         * lesson_navigation_color
 
         **DELETE**
-        Deactivates the theme by default. Set query param `remove` to `true` to actually theme and its images.
+        Deactivates the theme by default. Set query param `remove` to `true` to actually delete theme and its images.
     """
 
     serializer_class = ThemeSerializer
