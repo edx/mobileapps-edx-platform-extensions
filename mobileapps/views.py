@@ -1017,9 +1017,6 @@ class OrganizationThemeDetailView(MobileRetrieveUpdateDestroyAPIView):
         * navigation_icon_color
         * completed_course_tint
         * lesson_navigation_color
-
-        **DELETE**
-        Deactivates the theme by default. Set query param `remove` to `true` to actually theme and its images.
     """
 
     serializer_class = ThemeSerializer
@@ -1123,15 +1120,10 @@ class OrganizationThemeDetailView(MobileRetrieveUpdateDestroyAPIView):
 
         return Response(status=status.HTTP_200_OK)
 
-    def delete(self, _request, theme_id):
-        remove = self.request.query_params.get('remove', False)
-
+    def delete(self, request, theme_id):
         theme = get_object_or_404(Theme, pk=theme_id)
-        if not remove:
-            theme.active = None
-            theme.save(update_fields=['active', 'modified'])
-        else:
-            theme.delete()
+        theme.active = None
+        theme.save(update_fields=['active', 'modified'])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -1143,7 +1135,7 @@ class OrganizationThemeRemoveImageView(MobileRetrieveUpdateDestroyAPIView):
 
     **Example Requests**
 
-        DELETE /api/server/mobileapps/themes/{id}/remove/{attribute}
+        DELETE /api/server/mobileapps//themes/{id}/remove/{attribute}
 
         - attribute
             - Logo Image: logo_image
@@ -1157,7 +1149,7 @@ class OrganizationThemeRemoveImageView(MobileRetrieveUpdateDestroyAPIView):
         self.permission_classes += (IsStaffView,)
 
     @transaction.atomic
-    def delete(self, _request, theme_id, attribute):
+    def delete(self, request, theme_id, attribute):
         theme = get_object_or_404(Theme, pk=theme_id)
 
         if attribute == 'logo_image':

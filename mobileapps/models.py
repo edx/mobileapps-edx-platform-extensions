@@ -154,11 +154,6 @@ class Theme(TimeStampedModel):
     class Meta:
         unique_together = (('organization', 'active'), )
 
-    def delete(self):
-        self.remove_logo_image()
-        self.remove_header_bg_image()
-        super(Theme, self).delete()
-
     @staticmethod
     def mark_existing_as_inactive(organization_id):
         try:
