@@ -1,9 +1,8 @@
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 from mobileapps import views as mobile_views
 
 
-urlpatterns = patterns(
-    '',
+urlpatterns = [
     url(r'^notification_providers$', mobile_views.NotificationProviderView.as_view(), name='notification_providers'),
     url(r'^$', mobile_views.MobileAppView.as_view(), name='mobileapps'),
     url(r'^(?P<pk>[0-9]+)$', mobile_views.MobileAppDetailView.as_view(), name='mobileapps-detail'),
@@ -27,4 +26,4 @@ urlpatterns = patterns(
     url(r'^themes/(?P<theme_id>[0-9]+)/remove/(?P<attribute>[\w\_]+)$',
         mobile_views.OrganizationThemeRemoveImageView.as_view(),
         name='mobileapps-organization-themes-remove-image'),
-)
+]
