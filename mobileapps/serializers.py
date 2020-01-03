@@ -9,6 +9,7 @@ from mobileapps.models import MobileApp, NotificationProvider, DEPLOYMENT_CHOICE
 
 class NotificationProviderSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = '__all__'
         model = NotificationProvider
 
 
@@ -17,6 +18,7 @@ class MobileAppSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MobileApp
+        fields = '__all__'
         extra_kwargs = {'updated_by': {'read_only': True}}
 
     def _set_custom_validated_data(self, validated_data):
@@ -46,6 +48,7 @@ class ThemeSerializer(serializers.ModelSerializer):
     header_bg_image = serializers.SerializerMethodField()
 
     class Meta:
+        fields = '__all__'
         model = Theme
 
     def get_logo_image(self, theme):
