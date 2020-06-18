@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='mobileapps-edx-platform-extensions',
-    version='1.3.0',
+    version='2.0.0',
     description='Mobile apps management extension for edX platform',
     long_description=open('README.md').read(),
     author='edX',
@@ -12,6 +12,6 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        "django>=1.8",
+        "Django>=1.11,<1.12",
     ],
 )
