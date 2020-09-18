@@ -1,6 +1,5 @@
 from django.contrib import admin
-
-from mobileapps.models import NotificationProvider, MobileApp, Theme
+from mobileapps.models import MobileApp, NotificationProvider, Theme
 
 
 class NotificationProviderAdmin(admin.ModelAdmin):

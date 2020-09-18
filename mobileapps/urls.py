@@ -1,7 +1,6 @@
 from django.conf.urls import url
 from mobileapps import views as mobile_views
 
-
 urlpatterns = [
     url(r'^notification_providers$', mobile_views.NotificationProviderView.as_view(), name='notification_providers'),
     url(r'^$', mobile_views.MobileAppView.as_view(), name='mobileapps'),
