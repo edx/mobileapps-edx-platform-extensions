@@ -1,11 +1,8 @@
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-
-from django.db import migrations, models
 import django.db.models.deletion
 import django.utils.timezone
-from django.conf import settings
 import model_utils.fields
+from django.conf import settings
+from django.db import migrations, models
 
 
 class Migration(migrations.Migration):

@@ -1,17 +1,16 @@
 """
 Django database models supporting the mobile apps
 """
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import models
-from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from edx_solutions_api_integration.utils import StringCipher
 from edx_solutions_organizations.models import Organization
+from mobileapps.image_helpers import get_image_names, remove_images
 from model_utils.fields import AutoCreatedField
 from model_utils.models import TimeStampedModel
-
-from mobileapps.image_helpers import remove_images, get_image_names
 
 DEPLOYMENT_CHOICES = (
     (1, 'Public app store'),
@@ -157,7 +156,7 @@ class Theme(TimeStampedModel):
     def delete(self):
         self.remove_logo_image()
         self.remove_header_bg_image()
-        super(Theme, self).delete()
+        super().delete()
 
     @staticmethod
     def mark_existing_as_inactive(organization_id):
@@ -172,7 +171,7 @@ class Theme(TimeStampedModel):
         image_names = get_image_names(
             settings.ORGANIZATION_THEME_IMAGE_SECRET_KEY,
             "{}-{}-{}".format(self.organization.name, self.id, settings.ORGANIZATION_LOGO_IMAGE_KEY_PREFIX),
-            settings.ORGANIZATION_LOGO_IMAGE_SIZES_MAP.values()
+            list(settings.ORGANIZATION_LOGO_IMAGE_SIZES_MAP.values())
         )
         remove_images(settings.ORGANIZATION_LOGO_IMAGE_BACKEND, image_names)
         self.logo_image_uploaded_at = None
@@ -182,7 +181,7 @@ class Theme(TimeStampedModel):
         image_names = get_image_names(
             settings.ORGANIZATION_THEME_IMAGE_SECRET_KEY,
             "{}-{}-{}".format(self.organization.name, self.id, settings.ORGANIZATION_HEADER_BG_IMAGE_KEY_PREFIX),
-            settings.ORGANIZATION_HEADER_BG_IMAGE_SIZES_MAP.values()
+            list(settings.ORGANIZATION_HEADER_BG_IMAGE_SIZES_MAP.values())
         )
         remove_images(settings.ORGANIZATION_LOGO_IMAGE_BACKEND, image_names)
         self.header_bg_image_uploaded_at = None
