@@ -12,6 +12,6 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        "Django==2.2.15",
+        "Django>=2.2,<2.3",
     ],
 )
