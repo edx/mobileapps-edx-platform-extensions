@@ -81,7 +81,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='mobileapp',
             name='notification_provider',
-            field=models.ForeignKey(related_name='mobile_apps', blank=True, to='mobileapps.NotificationProvider', null=True),
+            field=models.ForeignKey(related_name='mobile_apps', blank=True, to='mobileapps.NotificationProvider', null=True, on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='mobileapp',
