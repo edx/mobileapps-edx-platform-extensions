@@ -3,7 +3,7 @@ Helper functions for the Organization themes API.
 """
 import hashlib
 from contextlib import closing
-from cStringIO import StringIO
+from io import BytesIO as StringIO
 
 from django.conf import settings
 from django.contrib.staticfiles.storage import staticfiles_storage
