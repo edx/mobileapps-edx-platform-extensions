@@ -10,7 +10,7 @@ import uuid
 import ddt
 from django.conf import settings
 from django.core.cache import cache
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.test.client import Client
 from edx_notifications import startup
 from edx_solutions_api_integration.test_utils import (APIClientMixin,
