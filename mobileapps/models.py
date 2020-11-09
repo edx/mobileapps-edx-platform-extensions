@@ -26,7 +26,7 @@ class EncryptedCharField(models.CharField):
     def from_db_value(self, value, expression, connection, context):
         if value and value.startswith(self.prefix):
             value = StringCipher.decrypt(value[len(self.prefix):].encode())
-        return value
+        return value.decode('utf-8') if value else None
 
     def get_db_prep_value(self, value, connection, prepared=False):
         if value and not value.startswith(self.prefix):
