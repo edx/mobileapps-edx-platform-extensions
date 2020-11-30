@@ -6,7 +6,7 @@ setup(
     name='mobileapps-edx-platform-extensions',
     version='3.0.0',
     description='Mobile apps management extension for edX platform',
-    long_description=open('README.md').read(),
+    long_description=open('README.rst').read(),
     author='edX',
     url='https://github.com/edx-solutions/mobileapps-edx-platform-extensions.git',
     packages=find_packages(),
