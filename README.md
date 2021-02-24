@@ -1,6 +1,8 @@
 mobileapps-edx-platform-extensions
 ==================================
 
+## Notice: This repo will be archived in April 2021.
+
 mobileapps-edx-platform-extensions (``mobileapps``) 
 is a Django application responsible for managing the mobile 
 applications. Mobile apps information can be stored and retrieved via 
