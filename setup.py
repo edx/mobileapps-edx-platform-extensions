@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 setup(
     name='mobileapps-edx-platform-extensions',
-    version='2.0.0',
+    version='3.0.0',
     description='Mobile apps management extension for edX platform',
-    long_description=open('README.md').read(),
+    long_description=open('README.rst').read(),
     author='edX',
     url='https://github.com/edx-solutions/mobileapps-edx-platform-extensions.git',
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        "Django>=1.11,<1.12",
+        "Django>=2.2,<2.3",
     ],
 )

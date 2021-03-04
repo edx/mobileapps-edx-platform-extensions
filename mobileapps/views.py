@@ -1,39 +1,37 @@
 import datetime
+from contextlib import closing
 
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
-from django.http import Http404
-from django.utils.translation import ugettext_lazy as _
-from django.utils.timezone import utc
 from django.db import transaction
+from django.http import Http404
 from django.shortcuts import get_object_or_404
-from contextlib import closing
-from rest_framework import status
-from rest_framework.response import Response
-
+from django.utils.timezone import utc
+from django.utils.translation import ugettext_lazy as _
 from edx_notifications.data import NotificationMessage
 from edx_notifications.lib.publisher import get_notification_type
 from edx_solutions_api_integration.permissions import (
-    MobileAPIView,
-    MobileListAPIView,
-    MobileListCreateAPIView,
-    MobileRetrieveUpdateAPIView,
-    MobileRetrieveUpdateDestroyAPIView,
-)
-from edx_solutions_api_integration.permissions import IsStaffOrReadOnlyView, IsStaffView
+    IsStaffOrReadOnlyView, IsStaffView, MobileAPIView, MobileListAPIView,
+    MobileListCreateAPIView, MobileRetrieveUpdateAPIView,
+    MobileRetrieveUpdateDestroyAPIView)
 from edx_solutions_api_integration.users.serializers import SimpleUserSerializer
 from edx_solutions_api_integration.utils import get_ids_from_list_param
 from edx_solutions_organizations.models import Organization
 from edx_solutions_organizations.serializers import BasicOrganizationSerializer
-from image_helpers import get_image_names, set_has_logo_image, create_images
-from openedx.core.djangoapps.profile_images.exceptions import ImageValidationError
-from openedx.core.djangoapps.profile_images.images import IMAGE_TYPES, validate_uploaded_image
-
 from mobileapps.image_helpers import get_image_names
 from mobileapps.models import MobileApp, NotificationProvider, Theme
-from mobileapps.serializers import MobileAppSerializer, NotificationProviderSerializer, ThemeSerializer
+from mobileapps.serializers import (MobileAppSerializer,
+                                    NotificationProviderSerializer,
+                                    ThemeSerializer)
 from mobileapps.tasks import publish_mobile_apps_notifications_task
+from openedx.core.djangoapps.profile_images.exceptions import ImageValidationError
+from openedx.core.djangoapps.profile_images.images import (
+    IMAGE_TYPES, validate_uploaded_image)
+from rest_framework import status
+from rest_framework.response import Response
+
+from .image_helpers import create_images, get_image_names, set_has_logo_image
 
 
 def _save_theme_image(uploaded_image, image_sizes, name_key, image_backend):
@@ -50,7 +48,7 @@ def _save_theme_image(uploaded_image, image_sizes, name_key, image_backend):
         except ImageValidationError as error:
             return False, error.message
 
-        image_names = get_image_names(settings.ORGANIZATION_THEME_IMAGE_SECRET_KEY, name_key, image_sizes.values())
+        image_names = get_image_names(settings.ORGANIZATION_THEME_IMAGE_SECRET_KEY, name_key, list(image_sizes.values()))
         create_images(uploaded_image, image_names, image_backend)
         return True, None
 
@@ -491,7 +489,7 @@ class MobileAppsNotifications(MobileAPIView):
 
                 # Send the notification_msg to the Celery task
                 publish_mobile_apps_notifications_task.delay([], notification_message, api_keys, notification_provider)
-        except Exception, ex:  # pylint: disable=broad-except
+        except Exception as ex:  # pylint: disable=broad-except
             return Response({'message':  _('Server error')}, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({'message': _('Accepted')}, status.HTTP_202_ACCEPTED)
@@ -551,7 +549,7 @@ class MobileAppAllUsersNotifications(MobileAPIView):
             # Send the notification_msg to the Celery task
             publish_mobile_apps_notifications_task.delay([], notification_message, api_keys, notification_provider)
 
-        except Exception, ex:  # pylint: disable=broad-except
+        except Exception as ex:  # pylint: disable=broad-except
             return Response({'message':  _('Server error')}, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({'message': _('Accepted')}, status.HTTP_202_ACCEPTED)
@@ -615,7 +613,7 @@ class MobileAppSelectedUsersNotifications(MobileAPIView):
             publish_mobile_apps_notifications_task.delay(user_ids, notification_message, api_keys,
                                                          notification_provider)
 
-        except Exception, ex:
+        except Exception as ex:
             return Response({'message':  _('Server error')}, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({'message': _('Accepted')}, status.HTTP_202_ACCEPTED)
@@ -680,14 +678,14 @@ class MobileAppOrganizationAllUsersNotifications(MobileAPIView):
             publish_mobile_apps_notifications_task.delay(user_ids, notification_message, api_keys,
                                                          notification_provider)
 
-        except Exception, ex:  # pylint: disable=broad-except
+        except Exception as ex:  # pylint: disable=broad-except
             return Response({'message':  _('Server error')}, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({'message': _('Accepted')}, status.HTTP_202_ACCEPTED)
 
 
 def _create_notification_message(app_id, payload):
-    notification_type = get_notification_type(u'open-edx.mobileapps.notifications')
+    notification_type = get_notification_type('open-edx.mobileapps.notifications')
     notification_message = NotificationMessage(
         namespace=str(app_id),
         msg_type=notification_type,

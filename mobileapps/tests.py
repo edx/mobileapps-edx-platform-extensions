@@ -4,27 +4,24 @@
 Run these tests @ Devstack:
 paver test_system -s lms -t mobileapps
 """
-import uuid
 import datetime
+import uuid
+
 import ddt
-from pytz import UTC
-from mock import patch
 from django.conf import settings
 from django.core.cache import cache
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.test.client import Client
 from edx_notifications import startup
-from edx_solutions_api_integration.test_utils import (
-    APIClientMixin, get_temporary_image,
-)
+from edx_solutions_api_integration.test_utils import (APIClientMixin,
+                                                      get_temporary_image)
 from edx_solutions_organizations.models import Organization
+from mobileapps.models import MobileApp, NotificationProvider, Theme
+from mock import patch
+from pytz import UTC
 from student.tests.factories import UserFactory
 from xmodule.modulestore.tests.django_utils import (
-    ModuleStoreTestCase,
-    TEST_DATA_SPLIT_MODULESTORE
-)
-from mobileapps.models import MobileApp, NotificationProvider, Theme
-
+    TEST_DATA_SPLIT_MODULESTORE, ModuleStoreTestCase)
 
 TEST_LOGO_IMAGE_UPLOAD_DT = datetime.datetime(2002, 1, 9, 15, 43, tzinfo=UTC)
 TEST_HEADER_BG_IMAGE_UPLOAD_DT = datetime.datetime(2002, 1, 9, 20, 43, tzinfo=UTC)
@@ -37,7 +34,7 @@ class NotificationProviderApiTests(ModuleStoreTestCase, APIClientMixin):
     MODULESTORE = TEST_DATA_SPLIT_MODULESTORE
 
     def setUp(self):
-        super(NotificationProviderApiTests, self).setUp()
+        super().setUp()
         self.base_uri = reverse('notification_providers')
 
         self.test_provider_name = "Test Provider Name"
@@ -67,7 +64,7 @@ class NotificationProviderApiTests(ModuleStoreTestCase, APIClientMixin):
     def test_notification_provider_list(self):
         notification_providers = []
 
-        for i in xrange(30):
+        for i in range(30):
             data = {
                 'name': 'Test Provider {}'.format(i),
                 'api_url': 'http://notification/provider/{}'.format(i),
@@ -103,7 +100,7 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
     MODULESTORE = TEST_DATA_SPLIT_MODULESTORE
 
     def setUp(self):
-        super(MobileappsApiTests, self).setUp()
+        super().setUp()
         self.base_mobileapps_uri = reverse('mobileapps')
 
         self.test_mobileapp_name = str(uuid.uuid4())
@@ -158,7 +155,7 @@ class MobileappsApiTests(ModuleStoreTestCase, APIClientMixin):
 
         users = UserFactory.create_batch(8)
 
-        for i in xrange(30):
+        for i in range(30):
             data = {
                 'name': 'Test Mobile App {}'.format(i),
                 'users': [user.id for user in users],
@@ -483,7 +480,7 @@ class MobileappsUserApiTests(ModuleStoreTestCase, APIClientMixin):
     MODULESTORE = TEST_DATA_SPLIT_MODULESTORE
 
     def setUp(self):
-        super(MobileappsUserApiTests, self).setUp()
+        super().setUp()
 
         self.test_mobileapp_name = str(uuid.uuid4())
         self.test_mobileapp_ios_app_id = str(uuid.uuid4())
@@ -649,7 +646,7 @@ class MobileappsOrganizationApiTests(ModuleStoreTestCase, APIClientMixin):
     MODULESTORE = TEST_DATA_SPLIT_MODULESTORE
 
     def setUp(self):
-        super(MobileappsOrganizationApiTests, self).setUp()
+        super().setUp()
 
         self.test_mobileapp_name = str(uuid.uuid4())
         self.test_mobileapp_ios_app_id = str(uuid.uuid4())
@@ -836,7 +833,7 @@ class MobileappsNotificationsTests(ModuleStoreTestCase, APIClientMixin):
 
     @classmethod
     def setUpClass(cls):
-        super(MobileappsNotificationsTests, cls).setUpClass()
+        super().setUpClass()
         cls.base_mobileapps_uri = reverse('mobileapps')
 
         notification_provider = NotificationProvider.objects.create(name='urban-airship')
@@ -888,7 +885,7 @@ class MobileappsNotificationsTests(ModuleStoreTestCase, APIClientMixin):
         cache.clear()
 
     def setUp(self):
-        super(MobileappsNotificationsTests, self).setUp()
+        super().setUp()
 
         self.non_staff_user = UserFactory.create(username='non_staff', email='demo@edx.org', password='test_password')
         self.user = UserFactory.create(username='test', email='test@edx.org', password='test_password', is_staff=True)
@@ -1097,7 +1094,7 @@ class MobileappsThemeApiTests(ModuleStoreTestCase, APIClientMixin):
     MODULESTORE = TEST_DATA_SPLIT_MODULESTORE
 
     def setUp(self):
-        super(MobileappsThemeApiTests, self).setUp()
+        super().setUp()
 
         self.organization1 = Organization.objects.create(name='ABC Organization')
         self.organization2 = Organization.objects.create(name='XYZ Organization')

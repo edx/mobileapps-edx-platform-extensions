@@ -1,11 +1,8 @@
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-
-from django.db import migrations, models
 import django.db.models.deletion
 import django.utils.timezone
-from django.conf import settings
 import model_utils.fields
+from django.conf import settings
+from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
@@ -24,8 +21,8 @@ class Migration(migrations.Migration):
                 ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, verbose_name='modified', editable=False)),
                 ('identifier', models.CharField(unique=True, max_length=255, db_index=True)),
                 ('name', models.CharField(max_length=255)),
-                ('operating_system', models.PositiveSmallIntegerField(choices=[(1, b'Android'), (2, b'iOS'), (3, b'Windows'), (4, b'Other')])),
-                ('deployment_mechanism', models.PositiveSmallIntegerField(default=1, choices=[(1, b'Public app store'), (2, b'Enterprise'), (3, b'OTA'), (4, b'Other')])),
+                ('operating_system', models.PositiveSmallIntegerField(choices=[(1, 'Android'), (2, 'iOS'), (3, 'Windows'), (4, 'Other')])),
+                ('deployment_mechanism', models.PositiveSmallIntegerField(default=1, choices=[(1, 'Public app store'), (2, 'Enterprise'), (3, 'OTA'), (4, 'Other')])),
                 ('download_url', models.CharField(max_length=255, null=True, blank=True)),
                 ('analytics_url_dev', models.CharField(max_length=255, null=True, blank=True)),
                 ('analytics_url_prod', models.CharField(max_length=255, null=True, blank=True)),
@@ -45,8 +42,8 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('identifier', models.CharField(max_length=255, db_index=True)),
                 ('name', models.CharField(max_length=255)),
-                ('operating_system', models.PositiveSmallIntegerField(choices=[(1, b'Android'), (2, b'iOS'), (3, b'Windows'), (4, b'Other')])),
-                ('deployment_mechanism', models.PositiveSmallIntegerField(choices=[(1, b'Public app store'), (2, b'Enterprise'), (3, b'OTA'), (4, b'Other')])),
+                ('operating_system', models.PositiveSmallIntegerField(choices=[(1, 'Android'), (2, 'iOS'), (3, 'Windows'), (4, 'Other')])),
+                ('deployment_mechanism', models.PositiveSmallIntegerField(choices=[(1, 'Public app store'), (2, 'Enterprise'), (3, 'OTA'), (4, 'Other')])),
                 ('download_url', models.CharField(max_length=255, null=True, blank=True)),
                 ('analytics_url_dev', models.CharField(max_length=255, null=True, blank=True)),
                 ('analytics_url_prod', models.CharField(max_length=255, null=True, blank=True)),
@@ -84,7 +81,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='mobileapp',
             name='notification_provider',
-            field=models.ForeignKey(related_name='mobile_apps', blank=True, to='mobileapps.NotificationProvider', null=True),
+            field=models.ForeignKey(related_name='mobile_apps', blank=True, to='mobileapps.NotificationProvider', null=True, on_delete=models.CASCADE),
         ),
         migrations.AddField(
             model_name='mobileapp',

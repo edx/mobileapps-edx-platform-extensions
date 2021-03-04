@@ -1,10 +1,9 @@
 from django.conf import settings
-from rest_framework import serializers
-
-from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
-
 from mobileapps.image_helpers import get_image_urls_by_key
-from mobileapps.models import MobileApp, NotificationProvider, DEPLOYMENT_CHOICES, Theme
+from mobileapps.models import (DEPLOYMENT_CHOICES, MobileApp,
+                               NotificationProvider, Theme)
+from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
+from rest_framework import serializers
 
 
 class NotificationProviderSerializer(serializers.ModelSerializer):
@@ -29,11 +28,11 @@ class MobileAppSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         self._set_custom_validated_data(validated_data)
-        return super(MobileAppSerializer, self).create(validated_data)
+        return super().create(validated_data)
 
     def update(self, instance, validated_data):
         self._set_custom_validated_data(validated_data)
-        return super(MobileAppSerializer, self).update(instance, validated_data)
+        return super().update(instance, validated_data)
 
 
 class BasicMobileAppSerializer(MobileAppSerializer):
