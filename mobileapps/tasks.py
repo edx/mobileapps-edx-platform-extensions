@@ -18,7 +18,7 @@ def publish_mobile_apps_notifications_task(user_ids, notification_msg, api_keys,
     try:
         bulk_publish_notification_to_users(user_ids, notification_msg, preferred_channel=provider,
                                            channel_context={"api_credentials": api_keys})
-    except Exception, ex:
+    except Exception as ex:
         # Notifications are never critical, so we don't want to disrupt any
         # other logic processing. So log and continue.
         log.exception(ex)

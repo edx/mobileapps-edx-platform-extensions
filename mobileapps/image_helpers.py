@@ -2,20 +2,16 @@
 Helper functions for the Organization themes API.
 """
 import hashlib
-from PIL import Image
 from contextlib import closing
-from cStringIO import StringIO
-
+from io import BytesIO as StringIO
 
 from django.conf import settings
+from django.contrib.staticfiles.storage import staticfiles_storage
 from django.core.files.base import ContentFile
 from django.core.files.storage import get_storage_class
-from django.contrib.staticfiles.storage import staticfiles_storage
-
 from edx_solutions_api_integration.utils import prefix_with_lms_base
-from openedx.core.djangoapps.profile_images.images import (
-    _get_corrected_exif,
-)
+from openedx.core.djangoapps.profile_images.images import _get_corrected_exif
+from PIL import Image
 
 IMAGE_FILE_EXTENSION = 'jpg'   # All processed images are converted to JPEGs
 IMAGE_KEY_PREFIX = 'image_url'
@@ -230,4 +226,3 @@ def _create_image_file(image, exif, format):
 
     image_file = ContentFile(string_io.getvalue())
     return image_file
-

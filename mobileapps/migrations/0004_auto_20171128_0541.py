@@ -1,9 +1,6 @@
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-
-from django.db import migrations, models
 import django.utils.timezone
 import model_utils.fields
+from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
@@ -23,7 +20,7 @@ class Migration(migrations.Migration):
                 ('name', models.CharField(max_length=255, null=True, blank=True)),
                 ('logo_image_uploaded_at', models.DateTimeField(db_index=True, null=True, blank=True)),
                 ('active', models.NullBooleanField(default=None)),
-                ('organization', models.ForeignKey(related_name='theme', to='edx_solutions_organizations.Organization')),
+                ('organization', models.ForeignKey(related_name='theme', to='edx_solutions_organizations.Organization', on_delete=models.CASCADE)),
             ],
         ),
         migrations.AlterUniqueTogether(

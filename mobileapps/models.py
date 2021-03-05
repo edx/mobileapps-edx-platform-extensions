@@ -1,17 +1,16 @@
 """
 Django database models supporting the mobile apps
 """
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import models
-from django.conf import settings
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from edx_solutions_api_integration.utils import StringCipher
 from edx_solutions_organizations.models import Organization
+from mobileapps.image_helpers import get_image_names, remove_images
 from model_utils.fields import AutoCreatedField
 from model_utils.models import TimeStampedModel
-
-from mobileapps.image_helpers import remove_images, get_image_names
 
 DEPLOYMENT_CHOICES = (
     (1, 'Public app store'),
@@ -27,7 +26,7 @@ class EncryptedCharField(models.CharField):
     def from_db_value(self, value, expression, connection, context):
         if value and value.startswith(self.prefix):
             value = StringCipher.decrypt(value[len(self.prefix):].encode())
-        return value
+        return value.decode('utf-8') if value else None
 
     def get_db_prep_value(self, value, connection, prepared=False):
         if value and not value.startswith(self.prefix):
@@ -58,7 +57,7 @@ class MobileApp(TimeStampedModel):
     android_download_url = models.CharField(max_length=255, null=True, blank=True)
     deployment_mechanism = models.PositiveSmallIntegerField(choices=DEPLOYMENT_CHOICES, default=1)
     analytics_url = models.CharField(max_length=255, null=True, blank=True)
-    notification_provider = models.ForeignKey(NotificationProvider, related_name="mobile_apps", blank=True, null=True)
+    notification_provider = models.ForeignKey(NotificationProvider, related_name="mobile_apps", blank=True, null=True, on_delete=models.CASCADE)
     provider_key = EncryptedCharField(max_length=255, null=True, blank=True)
     provider_secret = EncryptedCharField(max_length=255, null=True, blank=True)
     provider_dashboard_url = models.CharField(max_length=255, null=True, blank=True)
@@ -143,7 +142,7 @@ class Theme(TimeStampedModel):
     name = models.CharField(max_length=255, null=True, blank=True)
     logo_image_uploaded_at = models.DateTimeField(db_index=True, null=True, blank=True)
     header_bg_image_uploaded_at = models.DateTimeField(db_index=True, null=True, blank=True)
-    organization = models.ForeignKey(Organization, related_name="theme")
+    organization = models.ForeignKey(Organization, related_name="theme", on_delete=models.CASCADE)
     header_background_color = models.CharField(max_length=255, null=True, blank=True)
     navigation_text_color = models.CharField(max_length=255, null=True, blank=True)
     navigation_icon_color = models.CharField(max_length=255, null=True, blank=True)
@@ -157,7 +156,7 @@ class Theme(TimeStampedModel):
     def delete(self):
         self.remove_logo_image()
         self.remove_header_bg_image()
-        super(Theme, self).delete()
+        super().delete()
 
     @staticmethod
     def mark_existing_as_inactive(organization_id):
@@ -172,7 +171,7 @@ class Theme(TimeStampedModel):
         image_names = get_image_names(
             settings.ORGANIZATION_THEME_IMAGE_SECRET_KEY,
             "{}-{}-{}".format(self.organization.name, self.id, settings.ORGANIZATION_LOGO_IMAGE_KEY_PREFIX),
-            settings.ORGANIZATION_LOGO_IMAGE_SIZES_MAP.values()
+            list(settings.ORGANIZATION_LOGO_IMAGE_SIZES_MAP.values())
         )
         remove_images(settings.ORGANIZATION_LOGO_IMAGE_BACKEND, image_names)
         self.logo_image_uploaded_at = None
@@ -182,7 +181,7 @@ class Theme(TimeStampedModel):
         image_names = get_image_names(
             settings.ORGANIZATION_THEME_IMAGE_SECRET_KEY,
             "{}-{}-{}".format(self.organization.name, self.id, settings.ORGANIZATION_HEADER_BG_IMAGE_KEY_PREFIX),
-            settings.ORGANIZATION_HEADER_BG_IMAGE_SIZES_MAP.values()
+            list(settings.ORGANIZATION_HEADER_BG_IMAGE_SIZES_MAP.values())
         )
         remove_images(settings.ORGANIZATION_LOGO_IMAGE_BACKEND, image_names)
         self.header_bg_image_uploaded_at = None
